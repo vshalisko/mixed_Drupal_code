@@ -1,0 +1,29 @@
+$entity_field[0]['value'] = "";
+
+if (isset($entity->field_clave_pago) && isset($entity->field_clave_pago['und'][0]['value'])) {
+// Tenemos un valor de clave de pago (numero de contrato, etc.)
+// Opción 1: Generación de una liga ../pdf/201, donde 201 es el id de nodo/entity
+//$entity_field[0]['value'] .= ' <div><a href="../pdf/' .  $entity->nid . '"><strong>Imprimir</strong></a></div>';
+//echo  $entity->field_periodo_de_pago['und'][0]['tid'];
+// Opción 2: Generación de un boton par imprimir
+if (isset($entity->field_tipo_de_pago) && isset($entity->field_tipo_de_pago['und'][0]['tid'])) {
+$tipo_pago = taxonomy_term_load($entity->field_tipo_de_pago['und'][0]['tid']);
+if( $tipo_pago->name == 'Pago de agua') {
+     $entity_field[0]['value'] .= '<form method="post" action="../../PDFTemplates/recibo_agua.php" target="_blank">';
+     //$entity_field[0]['value'] .= '<form method="post" action="../../php_info.php">';
+     $entity_field[0]['value'] .= '<input  class="input-hidden" type="hidden" name="id_de_contrato" value="' . $entity->field_clave_pago['und'][0]['value'] . '">';
+     $entity_field[0]['value'] .= '<input  class="input-hidden" type="hidden" name="id_de_nodo" value="' . $entity->nid . '">'; 
+     $entity_field[0]['value'] .= '<input  class="input-hidden" type="hidden" name="periodo_pago" value="' . $entity->field_periodo_de_pago['und'][0]['tid'] . '">';
+     $entity_field[0]['value'] .= '<button type="submit">Imprimir</button></form>';
+}
+if($tipo_pago->name == 'Pago de predial') { 
+    $entity_field[0]['value'] .= '<form method="post" action="../../PDFTemplates/recibo_predial.php" target="_blank">';
+   //  $entity_field[0]['value'] .= '<form method="post" action="../../php_info.php">'; 
+     $entity_field[0]['value'] .= '<input  class="input-hidden" type="hidden" name="numero_licencia" value="' . $entity->field_clave_pago['und'][0]['value']. '">';
+     $entity_field[0]['value'] .= '<input  class="input-hidden" type="hidden" name="id_de_nodo" value="' . $entity->nid . '">';
+     $entity_field[0]['value'] .= '<button type="submit">Imprimir</button></form>';
+}
+} else { $entity_field[0]['value'] .= '.'; }
+}
+
+

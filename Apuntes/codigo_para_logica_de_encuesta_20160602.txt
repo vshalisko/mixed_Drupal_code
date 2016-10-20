@@ -1,0 +1,33 @@
+// falta implemetar la verificacion para que encuesta se presentaba solo para el usuario quien sometio el reporte (autor)
+if (isset($entity->field_encuesta_satisfaccion) && isset($entity->field_encuesta_satisfaccion['und'][0]['tid'])) {
+	// ya existen datos de encuesta (calidad de servicio)
+	$field_encuesta = taxonomy_term_load($entity->field_encuesta_satisfaccion['und'][0]['tid']);
+	$entity_field[0]['value'] = "<div><strong>Calidad de solución de problema:</strong> " . $field_encuesta->name . "</div>";
+	if (isset($entity->field_enchesta_rapidez) && isset($entity->field_enchesta_rapidez['und'][0]['tid'])) {
+		// existen datos de rapidez de servicio
+		$field_rapidez = taxonomy_term_load($entity->field_enchesta_rapidez['und'][0]['tid']);
+		$entity_field[0]['value'] .=  "<div><strong>Rapidez de solución de problema:</strong> " . $field_rapidez->name . "</div>";
+	}
+} else {
+	// aun no existen datos de encuesta
+	// $entity_field[0]['value'] = "";
+	if (isset($entity->comment_count) && isset($entity->cid)) {
+		// existen comentarios sobre estatus
+		// $entity_field[0]['value'] .= " Numero de comentrios " . $entity->comment_count;
+		// $entity_field[0]['value'] .= " Ultimo comentario CID " . $entity->cid;
+		$comment = comment_load($entity->cid);
+		if (isset($comment->field_incidente_estatus['und'][0]['tid'])) {
+			$status = taxonomy_term_load($comment->field_incidente_estatus['und'][0]['tid']);
+			$status_value = $status->name;
+			// $entity_field[0]['value'] .= $status_value;   // ultimo estatus
+			if (($status_value == "Problema resuelto") || ($status_value == "Problema resuelto")) {
+				// se requiere presentar encuesta
+				$entity_field[0]['value'] = ' <a href="../encuesta/' .  $entity->nid . '"><strong>Responde la encuesta sobre calidad de servicio</strong></a>';
+			} else {
+				// reporte aun esta en proceso de atencion no se requiere encuesta
+			}
+		}
+	}
+}
+
+

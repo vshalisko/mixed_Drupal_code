@@ -1,0 +1,53 @@
+if (isset($entity->field_encuesta_satisfaccion) && isset($entity->field_encuesta_satisfaccion['und'][0]['tid'])) {
+	// ya existen datos de encuesta (calidad de servicio), presentar los resultados de encuesta
+	$field_encuesta = taxonomy_term_load($entity->field_encuesta_satisfaccion['und'][0]['tid']);
+	$entity_field[0]['value'] = "<div><strong>Calidad de solución de problema:</strong> " . $field_encuesta->name . "</div>";
+	if (isset($entity->field_enchesta_rapidez) && isset($entity->field_enchesta_rapidez['und'][0]['tid'])) {
+		// existen datos de rapidez de servicio, presentarlos
+		$field_rapidez = taxonomy_term_load($entity->field_enchesta_rapidez['und'][0]['tid']);
+		$entity_field[0]['value'] .=  "<div><strong>Rapidez de solución de problema:</strong> " . $field_rapidez->name . "</div>";
+	}
+} else {
+	// aun no existen datos de encuesta
+	// $entity_field[0]['value'] = "";
+	if (isset($entity->comment_count) && isset($entity->cid)) {
+		// existen comentarios sobre estatus
+		// $entity_field[0]['value'] .= " Numero de comentarios " . $entity->comment_count;
+		// $entity_field[0]['value'] .= " Ultimo comentario CID " . $entity->cid;
+		$comment = comment_load($entity->cid);
+		if (isset($comment->field_incidente_estatus['und'][0]['tid'])) {
+			$status = taxonomy_term_load($comment->field_incidente_estatus['und'][0]['tid']);
+			$status_value = $status->name;
+			// $entity_field[0]['value'] .= $status_value;   // ultimo estatus
+			if (($status_value == "Problema resuelto") || ($status_value == "Inprocedente")) {
+				// cargar datos del usuario acutal
+				$current_user_name = "";
+				global $user;
+				if (isset($user->uid)) {
+					// usuario ingreso
+					$current_user = user_load($user->uid);
+					if (isset($current_user->name)) {
+						// $entity_field[0]['value'] .=  ' Ususario acual: ' . $current_user->name;
+						$current_user_name = $current_user->name;
+					} 
+				}
+				// cargar datos del usuario quien sometio el reporte
+				$report_user_name = "";
+				if (isset($entity->uid)) {
+					$report_user = user_load($entity->uid);
+					if (isset($report_user->name)) {
+						// $entity_field[0]['value'] .=  ' Usuario de reporte: ' . $report_user->name;
+						$report_user_name = $report_user->name;
+					}
+				}
+				// Comparar los nombres de usuario y en caso que coincide presentar liga para formulario de encuesta
+				if (($current_user_name <> "") && ($report_user_name <> "") && ($current_user_name == $report_user_name)) {
+					$entity_field[0]['value'] = ' <a href="../encuesta/' .  $entity->nid . '"><strong>Responde la encuesta sobre calidad de servicio</strong></a>';
+				}
+			} else {
+				// reporte aun esta en proceso de atencion y no se requiere encuesta
+			}
+		}
+	}
+}
+

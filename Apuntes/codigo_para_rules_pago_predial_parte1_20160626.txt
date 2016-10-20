@@ -1,0 +1,38 @@
+$contrato = $base_entity->field_clave_pago['und'][0]['value'];
+if (isset($contrato)) {
+          $query = "SELECT pad.cpadnombre, pad.cpadcvecat, padco.ccolnombre, pad.npadcodpos, padc.ccalnombre, pad.cpadubinoe, pad.cpadubinoi 
+          FROM padron_catastro.padron pad
+          INNER JOIN padron_catastro.calles padc ON padc.ncalcvecal=pad.npadubical
+          INNER JOIN padron_catastro.colonias padco ON padco.ncolcvecol=pad.npadubicol
+          WHERE pad.cpadnumcta = '". $contrato ."' LIMIT 1";
+          $sql_result = db_query($query)->fetchObject();
+          if ($sql_result) {
+                    if(isset($sql_result->cpadnombre)) {
+                              $base_entity->field_pagos_contribuyente['und'][0]['value'] = $sql_result->cpadnombre;
+                    } else {
+                              $base_entity->field_pagos_contribuyente['und'][0]['value'] = 'Sin datos del contribuyente';
+                    }
+                    if (isset($sql_result->cpadcvecat) && trim($sql_result->cpadcvecat, " ")) {
+                              $base_entity->field_datos_auxiliares['und'][0]['value'] = 'Clave catastral: ' .$sql_result->cpadcvecat;
+                    }
+                    if (isset($sql_result->ccolnombre)) {
+                              $base_entity->field_pagos_colonia['und'][0]['value'] = $sql_result->ccolnombre;
+                    }
+                    if (isset($sql_result->npadcodpos) && trim($sql_result->npadcodpos, " ")
+                                        && ($sql_result->npadcodpos != '0') && isset($base_entity->field_pagos_colonia['und'][0]['value'])) {
+                              $base_entity->field_pagos_colonia['und'][0]['value'] .= ' (C.P. ' . $sql_result->npadcodpos . ')';
+                    }
+                    if (isset($sql_result->ccalnombre)) {
+                              $base_entity->field_pagos_domicilio['und'][0]['value'] = $sql_result->ccalnombre;
+                    }
+                    if (isset($sql_result->cpadubinoe) && trim($sql_result->cpadubinoe, " ") && isset($base_entity->field_pagos_domicilio['und'][0]['value'])) {
+                              $base_entity->field_pagos_domicilio['und'][0]['value'] .= ' ' . $sql_result->cpadubinoe;
+                    }
+                    if (isset($sql_result->cpadubinoi) && trim($sql_result->cpadubinoi, " ") && isset($base_entity->field_pagos_domicilio['und'][0]['value'])) {
+                              $base_entity->field_pagos_domicilio['und'][0]['value'] .= ' interior ' . $sql_result->cpadubinoi;
+                    }
+          } else {
+                    drupal_set_message(t('Cuenta predial '. $contrato .' no fue encontrada'), 'warning');
+          }
+}
+return TRUE; 

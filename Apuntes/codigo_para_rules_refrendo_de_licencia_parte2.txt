@@ -1,0 +1,12 @@
+if (isset( $base_entity->field_rlm_id_contribuyente['und'][0]['value'] )) { $id_contribuyente = $base_entity->field_rlm_id_contribuyente['und'][0]['value']; }
+if (isset($id_contribuyente) && ($id_contribuyente > 0)) {
+        $query = "SELECT * FROM padron_licencias.dbopadroncontribuyentes
+                          WHERE  idcontribuyente = '". $id_contribuyente ."' LIMIT 1";
+        $sql_result = db_query($query)->fetchObject();
+         if ($sql_result) {
+                 // drupal_set_message(serialize($sql_result));
+                 if (isset($sql_result->nombre)) { $base_entity->field_rlm_contribuyente['und'][0]['value'] = $sql_result->nombre; }
+         }
+}
+
+return TRUE; 

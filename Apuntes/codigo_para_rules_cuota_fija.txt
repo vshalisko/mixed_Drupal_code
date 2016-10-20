@@ -1,0 +1,20 @@
+$contrato = $base_entity->field_clave_pago['und'][0]['value'];
+if (isset($contrato) && ($contrato > 0)) {
+$query = "SELECT cuota_fija FROM padron_agua.codificadas_colonia
+          WHERE contrato = '". $contrato ."' AND cancelado = '0' LIMIT 1";
+$sql_result = db_query($query)->fetchObject();
+if ($sql_result) {
+if (isset($sql_result->cuota_fija) && ($sql_result->cuota_fija)) {
+$contrato_formato = vsprintf("%08s",   $contrato);
+$base_entity->field_datos_auxiliares['und'][0]['value'] = $contrato_formato;
+$query2 = "SELECT * FROM padron_agua.dbocuotas cuot INNER JOIN padron_agua.dbocuotafij cfij ON cfij.clave_cuota = cuot.clave::integer
+          WHERE cuot.cantidad = '1' AND vigencia = trim(to_char(date_part('year', CURRENT_DATE),'9999'),' ') AND cuot.contrato = '". $contrato_formato ."' LIMIT 1";
+$sql_result2 = db_query($query2)->fetchObject();
+if ($sql_result2) {
+if (isset($sql_result2->importe)) {$base_entity->field_datos_auxiliares['und'][0]['value'] = 'Cuota fija: ' . $sql_result2->importe;}
+}
+}
+} else {
+}
+}
+return TRUE; 

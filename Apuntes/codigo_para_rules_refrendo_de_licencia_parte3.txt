@@ -1,0 +1,57 @@
+// Valores iniciales para tabla de pagos
+$concepto_linea_1 = 'Formato de licencia municipal';
+$clave_linea_1 = '';
+$monto_linea_1 = ' sin valor';
+$concepto_linea_2 = '';
+$clave_linea_2 = '';
+$monto_linea_2 = '';
+
+if (isset( $base_entity->field_rlm_id_giro['und'][0]['value'] )) { $id_giro = $base_entity->field_rlm_id_giro['und'][0]['value']; }
+if (isset($id_giro) && ($id_giro > 0)) {
+        $query = "SELECT * FROM padron_licencias.dbogiros
+                          WHERE  idgiro = '". $id_giro ."' LIMIT 1";
+        $sql_result = db_query($query)->fetchObject();
+         if ($sql_result) {
+                 // drupal_set_message(serialize($sql_result));
+                 if (isset($sql_result->nombre)) { $base_entity->field_rlm_giro['und'][0]['value'] = $sql_result->nombre; }
+         }
+        $query2 = "SELECT * FROM padron_licencias.dbogirocuotas
+                          WHERE ano = trim(to_char(date_part('year', CURRENT_DATE),'9999'),' ') AND idgiro = '". $id_giro ."' LIMIT 1";
+        $sql_result2 = db_query($query2)->fetchObject();
+         if ($sql_result2) {
+                 // drupal_set_message(serialize($sql_result2));
+                 if (isset($sql_result2->cuotafija)) { $monto_linea_1 = $sql_result2->cuotafija; }
+         } else {
+                 if (isset($base_entity->field_rlm_subtotal['und'][0]['value'])) { $monto_linea_1 = $base_entity->field_rlm_subtotal['und'][0]['value']; }
+         }
+}
+
+// colocar datos en "TableFlield"
+$paymenttable = array(
+'cell_0_0' => 'Concepto',
+'cell_0_1' => 'Clave',
+'cell_0_2' => 'Monto',
+'cell_1_0' => $concepto_linea_1,
+'cell_1_1' => $clave_linea_1,
+'cell_1_2' => '$' . $monto_linea_1,
+//'cell_2_0' => $concepto_linea_2,
+//'cell_2_1' => $clave_linea_2,
+//'cell_2_2' => '$' . $monto_linea_2,
+'rebuild' => array('count_cols' => '3', 'count_rows' => '2', 'rebuild' => 'Rebuild Table',),
+'import' => array ( 'tablefield_csv_field_mytablefield_0' => '', 'rebuild_field_mytablefield_0' => 'Cargar CSV', ),
+);
+$base_entity->field_rlm_tabla_conceptos['und'][0]['value'] = serialize($paymenttable);
+
+if (!isset($base_entity->field_rlm_subtotal['und'][0]['value'])) { $base_entity->field_rlm_subtotal['und'][0]['value'] = $monto_linea_1 + $monto_linea_2; }
+if (!isset($base_entity->field_rlm_cobranza['und'][0]['value'])) { $base_entity->field_rlm_cobranza['und'][0]['value'] = '0.00'; }
+if (!isset($base_entity->field_rlm_recargos['und'][0]['value'])) { $base_entity->field_rlm_recargos['und'][0]['value'] = '0.00'; }
+if (!isset($base_entity->field_rlm_multas['und'][0]['value'])) { $base_entity->field_rlm_multas['und'][0]['value'] =  '0.00'; }
+if (!isset($base_entity->field_rlm_total['und'][0]['value'])) { 
+	$base_entity->field_rlm_total['und'][0]['value'] = $base_entity->field_rlm_subtotal['und'][0]['value']  + 
+	$base_entity->field_rlm_cobranza['und'][0]['value'] + $base_entity->field_rlm_recargos['und'][0]['value'] + 
+	$base_entity->field_rlm_multas['und'][0]['value']; 
+}
+
+
+
+return TRUE; 

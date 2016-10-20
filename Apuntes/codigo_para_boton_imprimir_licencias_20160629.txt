@@ -1,0 +1,72 @@
+$entity_field[0]['value'] = "";
+
+$secretario_finanzas = "CP y A. Efren López Torrez"; // temporalmente
+$presidente_municipal = "Lic. Juan Alberto Márquez de Anda"; // temporalmente
+
+if (isset($entity->field_rlm_numero_de_licencia) && isset($entity->field_rlm_numero_de_licencia['und'][0]['value']) && trim($entity->field_rlm_numero_de_licencia['und'][0]['value'], " ")) {
+     $entity_field[0]['value'] .= '<form method="post" action="../../PDFTemplates/licencia.php" target="_blank">';
+     //$entity_field[0]['value'] .= '<form method="post" action="../../php_info.php">';
+     if (isset($entity->field_rlm_numero_de_licencia['und'][0]['value'])) {
+          $entity_field[0]['value'] .= '<input  class="input-hidden" type="hidden" name="cuenta" value="' . $entity->field_rlm_numero_de_licencia['und'][0]['value'] . '">';
+     }
+     if (isset($entity->field_rlm_contribuyente['und'][0]['value'])) {
+          $entity_field[0]['value'] .= '<input  class="input-hidden" type="hidden" name="nombre" value="' . $entity->field_rlm_contribuyente['und'][0]['value'] . '">';
+     }
+     if (isset($entity->field_rlm_razon_social['und'][0]['value'])) {
+          $entity_field[0]['value'] .= '<input  class="input-hidden" type="hidden" name="razon" value="' . $entity->field_rlm_razon_social['und'][0]['value'] . '">';
+     }
+     if (isset($entity->field_rlm_giro['und'][0]['value'])) {
+          $entity_field[0]['value'] .= '<input  class="input-hidden" type="hidden" name="giro" value="' . $entity->field_rlm_giro['und'][0]['value'] . '">';
+     }
+     if (isset($entity->field_rlm_domicilio['und'][0]['value'])) {
+          $entity_field[0]['value'] .= '<input  class="input-hidden" type="hidden" name="domicilio" value="' . $entity->field_rlm_domicilio['und'][0]['value'] . '">';
+     }
+     if (isset($entity->field_rlm_colonia['und'][0]['value'])) {
+          $entity_field[0]['value'] .= '<input  class="input-hidden" type="hidden" name="colonia" value="' . $entity->field_rlm_colonia['und'][0]['value'] . '">';
+     }     
+     if (isset($entity->field_rlm_subtotal['und'][0]['value'])) {
+          $entity_field[0]['value'] .= '<input  class="input-hidden" type="hidden" name="subtotal" value="' . $entity->field_rlm_subtotal['und'][0]['value'] . '">';
+     }    
+     if (isset($entity->field_rlm_recargos['und'][0]['value'])) {
+          $entity_field[0]['value'] .= '<input  class="input-hidden" type="hidden" name="recargo" value="' . $entity->field_rlm_recargos['und'][0]['value'] . '">';
+     }    
+     if (isset($entity->field_rlm_cobranza['und'][0]['value'])) {
+          $entity_field[0]['value'] .= '<input  class="input-hidden" type="hidden" name="gcobranza" value="' . $entity->field_rlm_cobranza['und'][0]['value'] . '">';
+     }    
+     if (isset($entity->field_rlm_multas['und'][0]['value'])) {
+          $entity_field[0]['value'] .= '<input  class="input-hidden" type="hidden" name="multa" value="' . $entity->field_rlm_multas['und'][0]['value'] . '">';
+     }    
+     if (isset($entity->field_rlm_total['und'][0]['value'])) {
+          $entity_field[0]['value'] .= '<input  class="input-hidden" type="hidden" name="total" value="' . $entity->field_rlm_total['und'][0]['value'] . '">';
+     }    
+     if (isset($entity->field_rlm_clave['und'][0]['value'])) {
+          $entity_field[0]['value'] .= '<input  class="input-hidden" type="hidden" name="clave" value="' . $entity->field_rlm_clave['und'][0]['value'] . '">';
+     }    
+     if (isset($entity->field_rlm_tabla_conceptos['und'][0]['value'])) {
+          $table = unserialize($entity->field_rlm_tabla_conceptos['und'][0]['value']);
+          $conceptos_lista = '';
+          $montos_lista = '';
+          for ( $i=2; $i <= $table['rebuild']['count_rows']; $i++) {
+                   $j = $i - 1;
+                    $clave_concepto = 'cell_'. $j .'_0';
+                    $clave_importe = 'cell_'. $j .'_2';
+                    if ($conceptos_lista) { $conceptos_lista .= ' | ' . $table[$clave_concepto]; } else { $conceptos_lista .= $table[$clave_concepto]; }
+                    if ($montos_lista) { $montos_lista .= ' | ' . $table[$clave_importe]; } else { $montos_lista .= $table[$clave_importe]; }
+          }
+
+          // $conceptos_lista = $table['cell_1_0'] . ' | ' . $table['cell_2_0'] . ' | ' . $table['cell_3_0'];
+          // $montos_lista = $table['cell_1_1'] . ' | ' . $table['cell_2_1'] . ' | ' . $table['cell_3_1'];
+
+          $entity_field[0]['value'] .= '<input  class="input-hidden" type="hidden" name="concepto" value="' . $conceptos_lista . '">';
+          $entity_field[0]['value'] .= '<input  class="input-hidden" type="hidden" name="importe" value="' . $montos_lista . '">';
+     }
+     if (isset($secretario_finanzas)) {
+          $entity_field[0]['value'] .= '<input  class="input-hidden" type="hidden" name="nomsecretario" value="' . $secretario_finanzas . '">';
+     }
+     if (isset($presidente_municipal)) {
+          $entity_field[0]['value'] .= '<input  class="input-hidden" type="hidden" name="nompresidente" value="' . $presidente_municipal . '">';
+     }
+
+     $entity_field[0]['value'] .= '<input  class="input-hidden" type="hidden" name="id_de_nodo" value="' . $entity->nid . '">'; 
+     $entity_field[0]['value'] .= '<button type="submit">Imprimir</button></form>';
+}

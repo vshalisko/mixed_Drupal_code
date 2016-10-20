@@ -1,0 +1,36 @@
+$licencia = '';
+if (isset($base_entity->field_rlm_numero_de_licencia['und'][0]['value'])) { $licencia = $base_entity->field_rlm_numero_de_licencia['und'][0]['value']; }
+if (isset($licencia) && ($licencia > 0)) {
+        $query = "SELECT * FROM padron_licencias.codificadas_colonia cc
+                          INNER JOIN padron_licencias.dbogirodetallelic gdlic ON gdlic.numerolicencia=cc.numero_licencia
+                          WHERE cc.numero_licencia::integer = '". $licencia ."' ORDER BY gdlic.fecha DESC LIMIT 1";
+        $sql_result = db_query($query)->fetchObject();
+         if ($sql_result) {
+                 // drupal_set_message($licencia);
+                 // drupal_set_message(serialize($sql_result));
+                 if (isset($sql_result->nombre_negocio)) { $base_entity->field_rlm_razon_social['und'][0]['value'] = $sql_result->nombre_negocio; }
+                 if (isset($sql_result->calle)) { 
+                          if (isset($sql_result->numext)) { 
+                                   $base_entity->field_rlm_domicilio['und'][0]['value'] = $sql_result->calle . ' ' . $sql_result->numext; 
+                          } else {
+                                   $base_entity->field_rlm_domicilio['und'][0]['value'] = $sql_result->calle;
+                          }
+                 } else {
+                          $base_entity->field_rlm_domicilio['und'][0]['value'] = 'Sin datos de domicilio';
+                 }
+                 if (isset($sql_result->colonia)) { $base_entity->field_rlm_colonia['und'][0]['value'] = $sql_result->colonia; }
+
+                 if (isset($sql_result->cuota)) { $base_entity->field_rlm_subtotal['und'][0]['value'] = $sql_result->cuota; } // temporalmente, después insertar en la tabla de pagos
+
+                 if (isset($sql_result->contribuyente)) {
+                          $base_entity->field_rlm_id_contribuyente['und'][0]['value'] = $sql_result->contribuyente; 
+                 }
+                 if (isset($sql_result->idgiro)) {
+                          $base_entity->field_rlm_id_giro['und'][0]['value'] = $sql_result->idgiro; 
+                 }
+
+         } else {
+                 drupal_set_message(t('Licencia '. $licencia .' no fue encontrada'), 'warning');
+         }
+}
+return TRUE; 

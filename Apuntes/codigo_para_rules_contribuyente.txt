@@ -1,0 +1,14 @@
+$contrato = $base_entity->field_clave_pago['und'][0]['value'];
+if (isset($contrato) && ($contrato > 0)) {
+$query = "SELECT nombre FROM padron_agua.codificadas_colonia
+          WHERE contrato = '". $contrato ."' LIMIT 1";
+$sql_result = db_query($query)->fetchObject();
+if ($sql_result) {
+// drupal_set_message($contrato);
+// drupal_set_message($sql_result->nombre);
+$base_entity->field_pagos_contribuyente['und'][0]['value'] = $sql_result->nombre;
+}
+}
+return TRUE; 
+
+

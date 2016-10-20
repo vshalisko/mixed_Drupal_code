@@ -1,0 +1,103 @@
+// determinar numero de meses a pagar (numero de meses al futuro)
+$periodo = 1; // mensual por default
+if (isset($base_entity->field_periodo_de_pago['und'][0]['tid'])) {
+	$periodo_term = taxonomy_term_load($base_entity->field_periodo_de_pago['und'][0]['tid']);
+	if ($periodo_term->name == "anual") { $periodo = 12; }
+	if ($periodo_term->name == "semestral") { $periodo = 6; }
+	if ($periodo_term->name == "bimestral") { $periodo = 2; }
+}
+
+// determinar intervalo a pagar (de fecha actual al fin de periodo de pago elegido por el usuario)
+$fecha_actual = new DateTime(date("Y-m-d"));
+$fecha_limite = new DateTime(date("Y-m-d"));
+$intervalo_formato = 'P' . $periodo . 'M';
+$fecha_limite->add(new DateInterval($intervalo_formato));
+if ( $periodo > 1 ) {
+	$base_entity->field_datos_auxiliares['und'][3]['value'] = 'Meses a pagar en este recibo: de ' . $fecha_actual->format("Y-m") .' a ' . $fecha_limite->format("Y-m");
+} else {
+	$base_entity->field_datos_auxiliares['und'][3]['value'] = 'Mes a pagar en este recibo: ' . $fecha_actual->format("Y-m");
+}
+
+// extraer valor de cuota fija
+$valor_cuota_fija = '0.00';   // valor inicial por si no tenemos datos en la DB
+if (isset($base_entity->field_datos_auxiliares['und'][0]['value'])) {
+	$valor_cuota_fija = substr($base_entity->field_datos_auxiliares['und'][0]['value'], 13);
+}
+
+// Valores iniciales para tabla de pagos
+$concepto_linea_1 = 'Agua potable';
+$monto_linea_1 = ' sin valor';
+$concepto_linea_2 = 'Alcantarillado';
+$monto_linea_2 = ' sin valor';
+$concepto_linea_3 = 'Infraestructura';
+$monto_linea_3 = ' sin valor';
+
+$conceptos = array('','','');
+$montos = array('','','');
+
+// Consulta de ultimo pago y pagos anteriores
+$contrato = $base_entity->field_clave_pago['und'][0]['value'];
+if (isset($contrato) && ($contrato > 0)) {
+	$contrato_formato = vsprintf("%08s",   $contrato);
+	$query_part = "SELECT cc.contrato, cc.cuenta, mov.fecha, mov.importe, mov.recargo, mov.recargorezago, res.ctmonombre, res.importeconcepto
+		FROM padron_agua.codificadas_colonia cc
+		INNER JOIN padron_agua.dbomovimientos mov ON cc.contrato=mov.contrato
+		INNER JOIN padron_agua.dboresultados res ON res.ctmocvemov=mov.movimiento AND res.pgsqlid <= 30";
+	$query1 = $query_part . " WHERE cc.contrato = '" . $contrato_formato . "' AND mov.fecha < CURRENT_DATE AND cc.cancelado ='0' AND mov.importe <> '$0.00' ORDER BY mov.fecha DESC";
+	$sql_result = db_query($query1)->fetchAll();
+	if ($sql_result) {
+		// Existen registros de pagos historicos 
+		if (isset($sql_result[0]->fecha)) { 
+			$base_entity->field_datos_auxiliares['und'][4]['value'] = 'Ultimo pago se realizo: ' . $sql_result[0]->fecha; 
+			// consultar lista de montos y conceptos de ultimo pago
+			$query2 = $query_part . " WHERE cc.contrato = '" . $contrato_formato . "' AND mov.fecha = '" . $sql_result[0]->fecha . "' AND cc.cancelado ='0'";
+			$sql_result2 = db_query($query2)->fetchAll();
+			if ($sql_result2) {
+				$monto_pagado = ''; // para depuracion
+				$i = 0;
+				foreach ($sql_result2 as $row) {
+					if (isset($row->importe)) { $montos[$i] = $row->importe; }
+					if (isset($row->ctmonombre)) { $conceptos[$i] = $row->ctmonombre; }
+					//$monto_pagado .= $row->importe . ' '; // para depuracion
+					$i++;
+				}
+				// $base_entity->field_datos_auxiliares['und'][5]['value'] = 'Montos pagados en último recibo: ' . $monto_pagado;  // para depuracion monto de pago histórico (actualizado)
+			}
+		} else { 
+			$base_entity->field_datos_auxiliares['und'][4]['value'] = 'No hay pagos anteriores registrados';
+		}
+	}
+}
+
+if ($conceptos[0]) {$concepto_linea_1 = $conceptos[0];}
+if ($conceptos[1]) {$concepto_linea_2 = $conceptos[1];}
+if ($conceptos[2]) {$concepto_linea_3 = $conceptos[2];}
+if ($montos[0]) {$monto_linea_1 = substr($montos[0],1) * $periodo;} else { $monto_linea_1 = $valor_cuota_fija * $periodo;  }
+if ($montos[1]) {$monto_linea_2 = substr($montos[1],1) * $periodo;}
+if ($montos[2]) {$monto_linea_3 = substr($montos[2],1) * $periodo;}
+
+// colocar datos en "TableFlield"
+$paymenttable = array(
+'cell_0_0' => 'Concepto',
+'cell_0_1' => 'Monto',
+'cell_1_0' => $concepto_linea_1,
+'cell_1_1' => '$' . $monto_linea_1,
+'cell_2_0' => $concepto_linea_2,
+'cell_2_1' => '$' . $monto_linea_2,
+'cell_3_0' => $concepto_linea_3,
+'cell_3_1' => '$' . $monto_linea_3,
+'rebuild' => array('count_cols' => '2', 'count_rows' => '4', 'rebuild' => 'Rebuild Table',),
+'import' => array ( 'tablefield_csv_field_mytablefield_0' => '', 'rebuild_field_mytablefield_0' => 'Cargar CSV', ),
+);
+$base_entity->field_tabla_de_pagos['und'][0]['value'] = serialize($paymenttable);
+
+// calcular los datos en resto de los campos
+// if (!isset($base_entity->field_subtotal['und'][0]['value'])) { $base_entity->field_subtotal['und'][0]['value'] = $valor_cuota_fija + $monto_linea_1 + $monto_linea_2 + $monto_linea_3; }
+if (!isset($base_entity->field_subtotal['und'][0]['value'])) { $base_entity->field_subtotal['und'][0]['value'] = $monto_linea_1 + $monto_linea_2 + $monto_linea_3; }
+if (!isset($base_entity->field_pagos_cobranza['und'][0]['value'])) { $base_entity->field_pagos_cobranza['und'][0]['value'] = '0.00'; }
+if (!isset($base_entity->field_pagos_recargos['und'][0]['value'])) { $base_entity->field_pagos_recargos['und'][0]['value'] = '0.00'; }
+// if (!isset($base_entity->field_impuestos['und'][0]['value'])) { $base_entity->field_impuestos['und'][0]['value'] =  $base_entity->field_subtotal['und'][0]['value'] * 0.16; }  // impuestos no se requieren
+if (!isset($base_entity->field_total['und'][0]['value'])) { 
+	$base_entity->field_total['und'][0]['value'] = $base_entity->field_subtotal['und'][0]['value']  + $base_entity->field_pagos_cobranza['und'][0]['value'] + $base_entity->field_pagos_recargos['und'][0]['value']; 
+}
+return TRUE;

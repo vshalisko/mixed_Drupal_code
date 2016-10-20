@@ -1,0 +1,72 @@
+$entity_field[0]['value'] = "";
+
+$secretario_finanzas = "A. Efren López Torrez"; // temporalmente
+
+if (isset($entity->field_clave_pago) && isset($entity->field_clave_pago['und'][0]['value'])) {
+// Tenemos un valor de clave de pago (numero de contrato, etc.)
+if (isset($entity->field_tipo_de_pago) && isset($entity->field_tipo_de_pago['und'][0]['tid'])) {
+$tipo_pago = taxonomy_term_load($entity->field_tipo_de_pago['und'][0]['tid']);
+if( $tipo_pago->name == 'Pago de agua') {
+     $entity_field[0]['value'] .= '<form method="post" action="../../PDFTemplates/recibo_agua.php" target="_blank">';
+     //$entity_field[0]['value'] .= '<form method="post" action="../../php_info.php">';
+     if (isset($entity->field_clave_pago['und'][0]['value'])) {
+          $entity_field[0]['value'] .= '<input  class="input-hidden" type="hidden" name="id_de_contrato" value="' . $entity->field_clave_pago['und'][0]['value'] . '">';
+     }
+     if (isset($entity->field_pagos_contribuyente['und'][0]['value'])) {
+          $entity_field[0]['value'] .= '<input  class="input-hidden" type="hidden" name="nombre" value="' . $entity->field_pagos_contribuyente['und'][0]['value'] . '">';
+     }
+     if (isset($entity->field_pagos_domicilio['und'][0]['value'])) {
+          $entity_field[0]['value'] .= '<input  class="input-hidden" type="hidden" name="domicilio" value="' . $entity->field_pagos_domicilio['und'][0]['value'] . '">';
+     }
+     if (isset($entity->field_pagos_colonia['und'][0]['value'])) {
+          $entity_field[0]['value'] .= '<input  class="input-hidden" type="hidden" name="colonia" value="' . $entity->field_pagos_colonia['und'][0]['value'] . '">';
+     }     
+     if (isset($entity->field_subtotal['und'][0]['value'])) {
+          $entity_field[0]['value'] .= '<input  class="input-hidden" type="hidden" name="subtotal" value="' . $entity->field_subtotal['und'][0]['value'] . '">';
+     }    
+     if (isset($entity->field_subtotal['und'][0]['value'])) {
+          $entity_field[0]['value'] .= '<input  class="input-hidden" type="hidden" name="subtotal" value="' . $entity->field_subtotal['und'][0]['value'] . '">';
+     }    
+     if (isset($entity->field_pagos_cobranza['und'][0]['value'])) {
+          $entity_field[0]['value'] .= '<input  class="input-hidden" type="hidden" name="gcobranza" value="' . $entity->field_pagos_cobranza['und'][0]['value'] . '">';
+     }    
+     if (isset($entity->field_pagos_recargos['und'][0]['value'])) {
+          $entity_field[0]['value'] .= '<input  class="input-hidden" type="hidden" name="recargo" value="' . $entity->field_pagos_recargos['und'][0]['value'] . '">';
+     }    
+     if (isset($entity->field_total['und'][0]['value'])) {
+          $entity_field[0]['value'] .= '<input  class="input-hidden" type="hidden" name="total" value="' . $entity->field_total['und'][0]['value'] . '">';
+     }    
+     if (isset($entity->field_datos_auxiliares['und'][2]['value'])) {
+          $entity_field[0]['value'] .= '<input  class="input-hidden" type="hidden" name="periodo_pago" value="' . $entity->field_datos_auxiliares['und'][2]['value'] . '">';
+     }    
+     if (isset($entity->field_datos_auxiliares['und'][0]['value'])) {
+          $entity_field[0]['value'] .= '<input  class="input-hidden" type="hidden" name="cuota_fija" value="' . substr($entity->field_datos_auxiliares['und'][0]['value'], 13) . '">';
+     }
+     if (isset($entity->field_datos_auxiliares['und'][1]['value'])) {
+          $entity_field[0]['value'] .= '<input  class="input-hidden" type="hidden" name="tarifa" value="' . $entity->field_datos_auxiliares['und'][1]['value'] . '">';
+     }
+     if (isset($entity->field_tabla_de_pagos['und'][0]['value'])) {
+          $table = unserialize($entity->field_tabla_de_pagos['und'][0]['value']);
+          $conceptos_lista = $table['cell_1_0'] . ' | ' . $table['cell_2_0'] . ' | ' . $table['cell_3_0'];
+          $montos_lista = $table['cell_1_1'] . ' | ' . $table['cell_2_1'] . ' | ' . $table['cell_3_1'];
+          $entity_field[0]['value'] .= '<input  class="input-hidden" type="hidden" name="concepto" value="' . $conceptos_lista . '">';
+          $entity_field[0]['value'] .= '<input  class="input-hidden" type="hidden" name="importe" value="' . $montos_lista . '">';
+     }
+     if (isset($secretario_finanzas)) {
+          $entity_field[0]['value'] .= '<input  class="input-hidden" type="hidden" name="nomsecretario" value="' . $secretario_finanzas . '">';
+     }
+
+     $entity_field[0]['value'] .= '<input  class="input-hidden" type="hidden" name="id_de_nodo" value="' . $entity->nid . '">'; 
+     $entity_field[0]['value'] .= '<button type="submit">Imprimir</button></form>';
+}
+if($tipo_pago->name == 'Pago de predial') { 
+    $entity_field[0]['value'] .= '<form method="post" action="../../PDFTemplates/recibo_predial.php" target="_blank">';
+   //  $entity_field[0]['value'] .= '<form method="post" action="../../php_info.php">'; 
+     $entity_field[0]['value'] .= '<input  class="input-hidden" type="hidden" name="numero_licencia" value="' . $entity->field_clave_pago['und'][0]['value']. '">';
+     $entity_field[0]['value'] .= '<input  class="input-hidden" type="hidden" name="id_de_nodo" value="' . $entity->nid . '">';
+     $entity_field[0]['value'] .= '<button type="submit">Imprimir</button></form>';
+}
+} else { $entity_field[0]['value'] .= '.'; }
+}
+
+

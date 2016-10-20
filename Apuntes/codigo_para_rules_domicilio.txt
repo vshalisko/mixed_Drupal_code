@@ -1,0 +1,13 @@
+$contrato = $base_entity->field_clave_pago['und'][0]['value'];
+if (isset($contrato) && ($contrato > 0)) {
+$query = "SELECT calle, colonia, numext FROM padron_agua.codificadas_colonia
+          WHERE contrato = '". $contrato ."' AND cancelado = '0' LIMIT 1";
+$sql_result = db_query($query)->fetchObject();
+if ($sql_result) {
+$base_entity->field_pagos_domicilio['und'][0]['value'] = $sql_result->calle . " " . $sql_result->numext;
+$base_entity->field_pagos_colonia['und'][0]['value'] = $sql_result->colonia;
+} else {
+$base_entity->field_pagos_domicilio['und'][0]['value'] = 'Sin datos de domicilio';
+}
+}
+return TRUE; 

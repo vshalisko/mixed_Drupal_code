@@ -1,0 +1,31 @@
+@mixin tag($tagcolor) {
+    color: #ffffff;
+    display: block;
+    padding: 3px 7px 3px 10px;
+    background: $tagcolor;
+    text-decoration: none;
+    font-family: sans-serif;
+    float: left;
+    border-radius: 0 5px 5px 0;
+    position: relative;
+    margin: 5px 0 5px 20px;
+    font-size: 12px;
+    transition: top 0.1s linear;
+    -webkit-transition: top 0.1s linear;
+    -moz-transition: top 0.1s linear;
+      &:before {
+        content: '';
+        width: 0; 
+        height: 0; 
+        border-top: 10px solid transparent;
+        border-bottom: 10px solid transparent; 
+        border-right: 10px solid $tagcolor;
+        position: absolute;
+        left: -10px;
+        top: 0;
+      }
+}
+
+.tag_red { @include tag(#e74343); }
+.tag_green { @include tag(#5cac5a); }
+.tag_blue { @include tag(#3b9fe5); }

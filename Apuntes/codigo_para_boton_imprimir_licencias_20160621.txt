@@ -1,0 +1,9 @@
+$entity_field[0]['value'] = "";
+
+if (isset($entity->field_rlm_numero_de_licencia) && isset($entity->field_rlm_numero_de_licencia['und'][0]['value']) && isset($entity->field_rlm_numero_de_licencia['und'][0]['value']) <> '') {
+     $entity_field[0]['value'] .= '<form method="post" action="../../PDFTemplates/refrendo.php" target="_blank">';
+     //$entity_field[0]['value'] .= '<form method="post" action="../../php_info.php">';
+     $entity_field[0]['value'] .= '<input  class="input-hidden" type="hidden" name="id_de_licencia" value="' . $entity->field_rlm_numero_de_licencia['und'][0]['value'] . '">';
+     $entity_field[0]['value'] .= '<input  class="input-hidden" type="hidden" name="id_de_nodo" value="' . $entity->nid . '">'; 
+     $entity_field[0]['value'] .= '<button type="submit">Imprimir</button></form>';
+}

@@ -1,0 +1,61 @@
+Pure css show/hide:
+
+<input type="radio" id="show" name="group">   
+<input type="radio" id="hide" name="group" checked>
+<label for="hide" class="hide"></label>
+<label for="show" class="show"></label>
+<span id="content">Lorem iupsum dolor si amet</span>
+
+
+
+
+label { position: absolute; top:0; left:0}
+
+input#show, input#hide {
+    display:none;
+}
+
+span#content {
+    display: block;
+    -webkit-transition: opacity 1s ease-out;
+    transition: opacity 1s ease-out;
+    opacity: 0; 
+    height: 0;
+    font-size: 0;
+    overflow: hidden;
+}
+
+input#show:checked ~ .show:before {
+    content: ""
+}
+input#show:checked ~ .hide:before {
+    content: "Hide"
+}
+
+input#hide:checked ~ .hide:before {
+    content: ""
+}
+input#hide:checked ~ .show:before {
+    content: "Show"
+}
+input#show:checked ~ span#content {
+    opacity: 1;
+    font-size: 100%;
+    height: auto;
+}
+input#hide:checked ~ span#content {
+    display: block;
+    -webkit-transition: opacity 1s ease-out;
+    transition: opacity 1s ease-out;
+    opacity: 0; 
+    height: 0;
+    font-size: 0;
+    overflow: hidden;
+}
+
+
+/* extra */
+#content {
+    float: left;
+    margin: 100px auto;
+}

@@ -1,0 +1,35 @@
+<?php
+echo '<div>Mapa temático de la topografía de Lagos de Moreno</div>';
+
+echo <<<EOL1
+<script type="text/javascript" language="JavaScript"><!--
+function ReverseDisplay(d) {
+if(document.getElementById(d).style.display == "none") { document.getElementById(d).style.display = "block"; }
+else { document.getElementById(d).style.display = "none"; }
+}
+//--></script>
+<style type="text/css"><!--
+.ayuda_local {
+border-radius: 15px;
+border: 2px solid lightgray;
+padding: 20px 20px 0px 20px;
+margin: 10px 10px 10px 10px; 
+width: 90%;
+}
+.ayuda_local_hover {
+display: block;
+margin: 5px 0px 15px 0px;
+} 
+//-->
+</style>
+EOL1;
+echo <<< EOL2
+<div><a href="javascript:ReverseDisplay('ayuda_local_1')" class="ayuda_local_hover">¿Cómo usar este mapa? (da clic para ver ayuda)</a></div>
+<div id="ayuda_local_1" style="display:none;"><div class="ayuda_local"><ol>
+<li>Acerca a la zona de interés por medio de la barra de aumento (zoom) en la parte izquierda del cuadro</li>
+<li>Selecciona las capas que desea visualizar en el selector de capas ubicado en la esquina derecha superior</li>
+<li>En caso que capa deseada permanece inactiva (gris) en el selector, aumenta el zoom hasta que capa se activa</li>
+<li>Las capas pueden tardase en visualizar, sea paciente</li>
+</ol></div></div>
+EOL2;
+?>
