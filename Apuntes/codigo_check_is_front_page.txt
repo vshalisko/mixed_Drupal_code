@@ -1,0 +1,8 @@
+<?php
+if(!drupal_is_front_page()) {
+echo <<<END
+<h3>¿Cómo usar esta página?</h3>
+<p>Instructivos y manuales.</p>
+END;
+}
+?>
