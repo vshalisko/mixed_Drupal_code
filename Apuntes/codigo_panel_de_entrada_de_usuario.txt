@@ -1,0 +1,144 @@
+<?php
+$f_roles = array("F","F_AP","F_CA","F_DU","F_EC","F_OP","F_PL","F_RH","F_SP");
+$s_roles = array("S","S_AP","S_CA","S_DU","S_EC","S_OP","S_PL","S_RH","S_SP");
+$a_roles = array("A","ASUPER","ASuper");
+
+global $user;
+$roles = $user->roles;
+$role = 'P';
+foreach ($roles as &$r) {
+   if ($r != 'authenticated user') {
+      if (in_array($r, $a_roles)) {
+          // admin role - max priority
+          $role=$r;
+      } elseif ( in_array($r, $s_roles) && !in_array($role, $a_roles)) {
+         // supervisor role - second priority
+         $role=$r;
+      } elseif (in_array($r, $f_roles) && !in_array($role, $s_roles) && !in_array($role, $a_roles)) {
+         // ordinary clerk role
+         $role=$r;
+      }
+     }
+}
+
+echo "<!--".$role."-->";
+
+if ( in_array($role, $a_roles) || in_array($role, $s_roles) || in_array($role, $f_roles) ) { 
+echo '
+    <div class="MainOptions">
+        <h2>Panel Principal</h2>        
+        <div class="BorderBottomTitle"></div>
+        
+        <div class="MainProducts">
+            <div class="MainIcon">
+                <a href="/cartaro/user" title="Clic para acceder a la cuenta de usuario">
+                    <div class="Mi_cuenta"></div>
+                    <h3>Cuenta</h3>
+                </a>
+                <div class="MainDescription">
+                </div>
+                <div class="IconTooltip" id="Iconclearfix">
+                    <h4>CUENTA DE USUARIO</h4>
+                    <p>Editar datos personales de la cuenta</p>
+                </div>
+            </div>
+        </div>        
+
+
+        <div class="MainProducts">
+            <div class="MainIcon">
+                <a href="/cartaro/content/herramientas-del-funcionario" title="Clic aquí para acceder al panel de herramientas">
+                    <div class="Herramientas"></div>
+                    <h3>Herramientas</h3>
+                </a>
+                <div class="MainDescription">
+                </div>
+                <div class="IconTooltip" id="Iconclearfix">
+                    <h4>HERRAMIENTAS</h4>
+                    <p>Trámites de pagos</p>
+                    <p>Trámites de pago</p>
+                    <p>Trámites de refrendo de licencia municipal</p>
+                    <p>Solicitudes de nueva licencia municipal</p>
+                    <p>Solicitudes de nuevo contrato de agua</p>
+                    <p>Solicitudes de buzón de trámites</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="MainProducts">
+            <div class="MainIcon">
+                <a href="/cartaro/lista-de-incidencias" title="Clic para ver listado de incidencias">
+                    <div class="Listado"></div>
+                    <h3>Incidencias</h3>
+                </a>
+                <div class="MainDescription">
+                </div>
+                <div class="IconTooltip" id="Iconclearfix">
+                    <h4>LISTADO DE INCIDENCIAS</h4>
+                    <p>Reportes actuales de incidencias</p>
+                </div>
+            </div>
+        </div>        
+    </div>
+';
+
+} elseif ($role == "P") {
+
+echo '
+    <div class="MainOptions">
+        <h2>Panel Principal</h2>        
+        <div class="BorderBottomTitle"></div>
+        
+        <div class="MainProducts">
+            <div class="MainIcon">
+                <a href="/cartaro/user" title="Clic para acceder a la cuenta de usuario">
+                    <div class="Mi_cuenta"></div>
+                    <h3>Mi cuenta</h3>
+                </a>
+                <div class="MainDescription">
+                </div>
+                <div class="IconTooltip" id="Iconclearfix">
+                    <h4>CUENTA DE USUARIO</h4>
+                    <p>Editar datos personales de la cuenta</p>
+                </div>
+            </div>
+        </div>        
+
+        <div class="MainProducts">
+            <div class="MainIcon">
+                <a href="/cartaro/mi-lista-de-incidencias" title="Clic para ver listado de incidencias reportadas">
+                    <div class="Listado"></div>
+                    <h3>Incidencias reportadas</h3>
+                </a>
+                <div class="MainDescription">
+                </div>
+                <div class="IconTooltip" id="Iconclearfix">
+                    <h4>LISTADO DE INCIDENCIAS</h4>
+                    <p>Reportes actuales de incidencias</p>
+                </div>
+            </div>
+        </div>        
+
+
+        <div class="MainProducts" >
+            <div class="MainIcon">
+                <a href="/cartaro/mi-lista-de-pagos" title="Clic para iniciar trámite de refrendo de licencia">
+                    <div class="Mis_tramites"></div>
+                    <h3>Mis trámites</h3>
+                </a>
+                <div class="MainDescription">
+                </div>
+                <div class="IconTooltip" id="Iconclearfix">
+                    <h4>TRAMITES</h4>
+                    <p>Listado de trámites</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+';
+
+
+
+}
+?>
