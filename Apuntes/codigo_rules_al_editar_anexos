@@ -1,0 +1,54 @@
+Actions:
+===================================================================
+Execute custom PHP code
+===================================================================
+// agregar comentario sobre estatus
+
+// cargar datos del usuario acutal
+$current_user_name = '';
+$current_user_full_name = '';
+$current_user_id = 0;
+global $user;
+if (isset($user->uid)) {
+     $current_user_id = $user->uid;
+     $current_user = user_load($user->uid);
+     // next line for debugging
+     // drupal_set_message(t('Usuario: '. serialize($current_user)), 'warning');
+     if (isset($current_user->name)) {
+             $current_user_name = $current_user->name;
+     } 
+     if (isset($current_user->field_nombre_completo_usuario['und'][0]['value'])) {
+             $current_user_full_name = $current_user->field_nombre_completo_usuario['und'][0]['value'];
+     } else {
+             $current_user_full_name = $current_user_name;
+     }
+}
+
+$comment = (object) array(
+    'nid' => $base_entity->nid,
+    'cid' => 0,
+    'pid' => 0,
+    'uid' => $current_user_id,
+    'mail' => '',
+    'is_anonymous' => 0,
+    'homepage' => '',
+    'created' => time(),
+    'status' => COMMENT_PUBLISHED,
+    'subject' => 'Seguimiento del trámite',
+    'language' => LANGUAGE_NONE,
+  );
+
+$comment->comment_body[$comment->language][0]['value'] = 'Trámite fue actualizado por ' . $current_user_full_name  
+                                                                                                     . ', fecha de actualización ' . format_date(time(), 'custom', 'l j F Y  H:i');
+$comment->comment_body[$comment->language][0]['format'] = 'plain_text'; 
+
+$comment->field_rlm_estatus_dictamen[$comment->language][0]['tid'] = '253';
+
+comment_submit($comment);
+comment_save($comment);
+
+
+=============================================
+Page redirect:
+=============================================
+[site:url]content/[base-entity:title]
