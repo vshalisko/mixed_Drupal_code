@@ -1,5 +1,9 @@
 $entity_field[0]['value'] = "";
-if (isset($entity->comment_count) && isset($entity->cid)) {
+$is_node = 0;
+if (current_path()) {
+    $is_node = preg_match("/^node\//", current_path());
+}
+if (isset($entity->comment_count) && isset($entity->cid) && $is_node) {
     // existen comentarios sobre estatus
     // cargar último comentario
     $comment = comment_load($entity->cid);
