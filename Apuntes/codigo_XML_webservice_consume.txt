@@ -1,0 +1,42 @@
+<?php
+//Globals
+$var_contrato = 12556;
+
+// ==================================
+// use of ws_nextcode module
+$service = new WService();
+$contrato = new getContratoAgua();
+//Define values of parameters used by webservice
+$contrato->no_Contrato=$var_contrato;
+//Send petition to server with object contrato and catch result in $result
+$result=$service->getContratoAgua($contrato);
+$var=get_object_vars($result);
+$keys = array_keys($var);
+$soap_result = $var[$keys[0]]->any; //According to WS structure, here go "any" content
+//Clean soap response information and create an array with important information
+$clean_soap_result = str_ireplace(['ns2:','soap:'],'',$soap_result);
+$xml = simplexml_load_string($clean_soap_result);
+// ==================================
+
+echo('<h2>Consulta de datos de contrato de agua (función getContratoAgua)</h2>');
+echo('<h3>Número de contrato: '. $var_contrato .'</h3>');
+
+// format XML for output
+$domxml = new DOMDocument('1.0');
+$domxml->preserveWhiteSpace = false;
+$domxml->formatOutput = true;
+$domxml->loadXML($xml->asXML());
+$xml_format = $domxml->saveXML();
+
+// output formatted XML code from WebService
+echo('<h3>Codigo XML resultado de consulta de Webservice (con formato)</h3>');
+print("<pre>");
+print_r(htmlspecialchars($xml_format));
+print("</pre>");
+
+// equivalent data structure
+echo('<h3>Estructura de datos equivalente</h3>');
+echo("<pre>");
+print_r($xml);
+echo("</pre>");
+?>
