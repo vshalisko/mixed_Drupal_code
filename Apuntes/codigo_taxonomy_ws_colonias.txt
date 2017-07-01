@@ -1,0 +1,97 @@
+<?php
+//Globals
+//Create a taxonomy term and return the tid.
+function custom_create_taxonomy_term($name, $vid) {
+  $term = new stdClass();
+  $term->name = $name;
+  $term->vid = $vid;
+  $term->field_incluido['und'][0]['value'] = 1;
+  taxonomy_term_save($term);
+  return $term->tid;
+}
+
+
+// ==================================
+// use of ws_nextcode module
+$service = new WService();
+$colonias= new getCatalogoColonias();
+//Send petition to server with object contrato and catch result in $result
+$result=$service->getCatalogoColonias($colonias);
+$var=get_object_vars($result);
+$keys = array_keys($var);
+$soap_result = $var[$keys[0]]->any; //According to WS structure, here go "any" content
+//Clean soap response information and create an array with important information
+$clean_soap_result = str_ireplace(['ns2:','soap:'],'',$soap_result);
+$xml = simplexml_load_string($clean_soap_result);
+// ==================================
+
+echo('<h2>Consulta de datos de catálogos y actualización de almacenamiento local en Taxonomy</h2>');
+echo('<h3>función: getCatalogoColonias</h3>');
+echo('<h3>taxonomy: ws_catalogo_colonias</h3>');
+
+// format XML for output
+$domxml = new DOMDocument('1.0');
+$domxml->preserveWhiteSpace = false;
+$domxml->formatOutput = true;
+$domxml->loadXML($xml->asXML());
+$xml_format = $domxml->saveXML();
+
+// output formatted XML code from WebService
+echo('<h3>Codigo XML resultado de consulta de Webservice (con formato)</h3>');
+print("<pre>");
+print_r(htmlspecialchars($xml_format));
+print("</pre>");
+
+// equivalent data structure
+//echo('<h3>Estructura de datos equivalente</h3>');
+//echo("<pre>");
+//print_r($xml);
+//echo("</pre>");
+
+$vocabulary = taxonomy_vocabulary_machine_name_load('ws_catalogo_colonias');
+$terms = entity_load('taxonomy_term', FALSE, array('vid' => $vocabulary->vid));
+$my_vid = $vocabulary->vid;
+
+if (isset($xml->Body->GetConsultaAguaResponse->Return->NombreColonia)) {
+    echo('<h3>Actualización del catálogo local</h3>');
+
+    // reset included flag in all existing terms
+    foreach ($terms as $term) {
+        $term->field_incluido['und'][0]['value'] = 0;
+    }
+    unset($term);
+
+    echo("<pre>");
+    foreach ($xml->Body->GetConsultaAguaResponse->Return->NombreColonia as $item) {
+         if ( trim($item) ) {
+            echo(trim($item));
+            echo(" : ");
+            $already_included = 0;
+            foreach ($terms as $term) {
+                 if (trim($term->name) == trim($item)) {
+                     echo("Elemento ya incluido en el catálogo\n");
+                     $already_included = 1;
+                     $term->field_incluido['und'][0]['value'] = 1;
+                 }
+            }
+            unset($term);
+            if (!$already_included) {
+                echo("Elemento nuevo para el catálogo, TID = ");
+                $my_tid = custom_create_taxonomy_term(trim($item), $my_vid);
+                echo($my_tid);
+                echo("\n");
+            }
+        }
+    }
+    echo("</pre>");
+}
+
+// print all taxonomy items
+//echo('<pre>');
+//foreach ($terms as $term) {
+//    print_r($term);
+//}
+//unset($term);
+//echo('</pre>');
+
+?>
