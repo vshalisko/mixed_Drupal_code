@@ -7,7 +7,8 @@ $var_periodo = 'ANUAL';
 
 // ==================================
 // use of ws_nextcode module
-$service = new WService();
+try{
+    $service = new WService();
     $contrato = new getAdeudoContratoAgua();
     //Define values of parameters used by webservice
     $contrato->no_Contrato=$var_contrato;
@@ -15,12 +16,18 @@ $service = new WService();
     //Send petition to server with object contrato and catch result in $result
     $result=$service->getAdeudoContratoAgua($contrato);
 
-$var=get_object_vars($result);
-$keys = array_keys($var);
-$soap_result = $var[$keys[0]]->any; //According to WS structure, here go "any" content
-//Clean soap response information and create an array with important information
-$clean_soap_result = str_ireplace(['ns2:','soap:'],'',$soap_result);
-$xml = simplexml_load_string($clean_soap_result);
+    $var=get_object_vars($result);
+    $keys = array_keys($var);
+    $soap_result = $var[$keys[0]]->any; //According to WS structure, here go "any" content
+    //Clean soap response information and create an array with important information
+    $clean_soap_result = str_ireplace(['ns2:','soap:'],'',$soap_result);
+    $xml = simplexml_load_string($clean_soap_result);
+}
+catch (SoapFault $e){
+    echo $e->faultcode;
+    echo('<div class="messages warning"><h2 class="element-invisible">Mensaje de advertencia</h2>)';
+   echo('<ul><li>Su solicitud no puede ser completada. Sistema está experimentando problemas técnicos al consultar base de datos del municipio. Regrese mas tarde.</li></ul></div>');
+}
 // ==================================
 
 echo('<h2>Consulta de adeudo de agua (getAdeudoContratoAgua)</h2>');
