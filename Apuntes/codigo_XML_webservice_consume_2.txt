@@ -7,6 +7,7 @@ $var_periodo = 'ANUAL';
 
 // ==================================
 // use of ws_nextcode module
+$xml = new SimpleXMLElement('<Body></Body>');
 try{
     $service = new WService();
     $contrato = new getAdeudoContratoAgua();
@@ -24,9 +25,11 @@ try{
     $xml = simplexml_load_string($clean_soap_result);
 }
 catch (SoapFault $e){
-    echo $e->faultcode;
-    echo('<div class="messages warning"><h2 class="element-invisible">Mensaje de advertencia</h2>)';
-   echo('<ul><li>Su solicitud no puede ser completada. Sistema está experimentando problemas técnicos al consultar base de datos del municipio. Regrese mas tarde.</li></ul></div>');
+    echo('<div class="messages warning"><h2 class="element-invisible">Mensaje de advertencia</h2>');
+    echo('<ul>');
+    echo('<li>Su solicitud no puede ser completada. Sistema está experimentando problemas técnicos al consultar base de datos del municipio. Regrese más tarde.</li>');
+    echo("<li>Código de error: $e->faultcode</li>");
+    echo('</ul></div>');
 }
 // ==================================
 
@@ -34,21 +37,25 @@ echo('<h2>Consulta de adeudo de agua (getAdeudoContratoAgua)</h2>');
 echo('<h3>Número de contrato de agua '. $var_contrato .'</h3>');
 
 // format XML for output
-$domxml = new DOMDocument('1.0');
-$domxml->preserveWhiteSpace = false;
-$domxml->formatOutput = true;
-$domxml->loadXML($xml->asXML());
-$xml_format = $domxml->saveXML();
+if ($xml->count() > 0) {
+    $domxml = new DOMDocument('1.0');
+    $domxml->preserveWhiteSpace = false;
+    $domxml->formatOutput = true;
+    $domxml->loadXML($xml->asXML());
+    $xml_format = $domxml->saveXML();
+}
 
-// output formatted XML code from WebService
-echo('<h3>Codigo XML resultado de consulta de Webservice (con formato)</h3>');
-print("<pre>");
-print_r(htmlspecialchars($xml_format));
-print("</pre>");
+if ($xml->count() > 0) {
+    // output formatted XML code from WebService
+    echo('<h3>Codigo XML resultado de consulta de Webservice (con formato)</h3>');
+    print("<pre>");
+    print_r(htmlspecialchars($xml_format));
+    print("</pre>");
 
-// equivalent data structure
-echo('<h3>Estructura de datos equivalente</h3>');
-echo("<pre>");
-print_r($xml);
-echo("</pre>");
+    // equivalent data structure
+    echo('<h3>Estructura de datos equivalente</h3>');
+    echo("<pre>");
+    print_r($xml);
+    echo("</pre>");
+}
 ?>
