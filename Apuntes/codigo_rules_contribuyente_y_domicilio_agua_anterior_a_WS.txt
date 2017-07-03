@@ -1,0 +1,50 @@
+// nombre del contribuyente y domicilio
+$contrato = $base_entity->field_clave_pago['und'][0]['value'];
+if (isset($contrato) && is_numeric($contrato) && ($contrato > 0) && ($contrato < 2147483647)) {
+    $query = "SELECT nombre, contrato, fecha_alta, calle, colonia, cruce1, cruce2, numext, cuota_fija, cuota_mini, alcantaril, cp ";
+          $query .= "FROM capas_ldm.shp_agua WHERE contrato = '". $contrato ."' AND cancelado = '0' LIMIT 1";
+          $sql_result = '';
+          $sql_preresult = db_query($query)->fetchObject();
+          if ($sql_preresult) { 
+                 $sql_result = $sql_preresult; 
+          } else {
+        	  $query = "SELECT nombre, contrato, fecha_alta, calle, colonia, cruce1, cruce2, numext, cuota_fija, cuota_minima, alcantarillado ";
+                  $query .= "FROM padron_agua.codificadas_colonia WHERE contrato = '". $contrato ."' AND cancelado = '0' LIMIT 1";
+                  $sql_result = db_query($query)->fetchObject();
+          }
+
+          if ($sql_result) {
+		// nombre
+		if (isset($sql_result->nombre)) {
+			$base_entity->field_pagos_contribuyente['und'][0]['value'] = $sql_result->nombre;
+		} else {
+			// $base_entity->field_pagos_contribuyente['und'][0]['value'] = 'Sin datos del contribuyente';
+		}
+		// domicilio
+		if (isset($sql_result->calle) && isset($sql_result->numext)) {
+			$base_entity->field_pagos_domicilio['und'][0]['value'] = $sql_result->calle . " " . $sql_result->numext;
+		} elseif (isset($sql_result->calle)) {
+			$base_entity->field_pagos_domicilio['und'][0]['value'] = $sql_result->calle;
+		} else {
+			$base_entity->field_pagos_domicilio['und'][0]['value'] = 'Sin datos de domicilio';
+		}
+		// colonia
+		if ($sql_result->colonia) {
+			$base_entity->field_pagos_colonia['und'][0]['value'] = $sql_result->colonia;
+		}
+                // código postal
+		if (isset($sql_result->cp) && is_numeric($sql_result->cp) && ($sql_result->cp > 0) && ($sql_result->cp < 100000)) {
+			$base_entity->field_pago_codigo_postal['und'][0]['value'] = $sql_result->cp;
+		}
+
+		// entre
+		if (isset($sql_result->cruce1) && isset($sql_result->cruce2)) {
+                        // calles de cruce no están codificados de manera transparente en el padron, por el momento estos datos se omiten
+			//$base_entity->field_pago_entre_calles['und'][0]['value'] = $sql_result->cruce1;
+			//$base_entity->field_pago_entre_calles['und'][1]['value'] = $sql_result->cruce2;			
+		}
+          } else {
+                    drupal_set_message(t('Información de cuenta de agua '. $contrato .' no fue encontrada o es incompleta'), 'warning');
+          }	
+}
+return TRUE;
