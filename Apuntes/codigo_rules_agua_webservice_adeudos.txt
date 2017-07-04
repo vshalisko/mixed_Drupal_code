@@ -1,0 +1,127 @@
+// función para consulta de adeudos en WS y su almacenamiento en la ficha
+$debug = 0;  // variable para debugging, cambia a 0 en producción
+
+$contrato = $base_entity->field_clave_pago['und'][0]['value'];
+$var_periodo = 'ANUAL';
+
+if (isset($contrato) && is_numeric($contrato) && ($contrato > 0) && ($contrato < 2147483647)) {
+    // para esta consulta se requiere tener número de cuenta como cadena de texto rellena de ceros
+    $var_contrato = sprintf("%'08d",$contrato);
+    //$var_contrato = '00025643';
+
+
+    // ==================================
+    // use of ws_nextcode module
+    $xml = new SimpleXMLElement('<Body></Body>');
+    try{
+        // load module for communication
+        drupal_load('module','ws_nextcode');
+        $service = new WService();
+        $contrato_obj = new getAdeudoContratoAgua();
+        //Define values of parameters used by webservice
+        $contrato_obj->no_Contrato=$var_contrato;
+        $contrato_obj->periodo_de_pago=$var_periodo;
+        //Send petition to server with object contrato and catch result in $result
+        $result=$service->getAdeudoContratoAgua($contrato_obj);
+
+        $var=get_object_vars($result);
+        $keys = array_keys($var);
+        $soap_result = $var[$keys[0]]->any;  // According to WS structure here go any content
+        //Clean soap response information and create an array with important information
+        $clean_soap_result = str_ireplace('ns2:','',$soap_result);
+        $clean_soap_result = str_ireplace('soap:','',$clean_soap_result);
+        $xml = simplexml_load_string($clean_soap_result);
+
+        if ($debug) {
+            // format XML for output
+            if ($xml->count() > 0) {
+                $domxml = new DOMDocument('1.0');
+                $domxml->preserveWhiteSpace = false;
+                $domxml->formatOutput = true;
+                $domxml->loadXML($xml->asXML());
+                $xml_format = $domxml->saveXML();
+            }
+            $xml_print = "<pre>CONTRATO: $contrato, XML: " . htmlspecialchars(serialize($xml_format)) . "</pre>";
+            drupal_set_message($xml_print, 'warning');
+        }
+    }
+    catch (SoapFault $e){
+        //echo('<div class="messages warning"><h2 class="element-invisible">Mensaje de advertencia</h2>');
+        //echo('<ul>');
+        //echo('<li>Su solicitud no puede ser completada. Sistema está experimentando problemas técnicos al consultar base de datos del municipio. Regrese más tarde.</li>');
+        //echo("<li>Código de error: $e->faultcode</li>");
+        //echo('</ul></div>');
+        drupal_set_message(t('Su solicitud no puede ser completada. Sistema está experimentando problemas técnicos al consultar base de datos del municipio. Regrese más tarde.'), 'warning');
+        drupal_set_message(t("Código de error: $e->faultcode"), 'warning');
+    }
+    // ==================================
+
+    if ($xml->count() > 0) {
+        // consulta regresa algunos datos
+
+        if( isset($xml->Body->GetConsultaAguaResponse->Return->FechaUltimoPago) && $xml->Body->GetConsultaAguaResponse->Return->FechaUltimoPago->__toString() ) {
+            // existe fecha de último pago
+            // por medio de regexp descartamos la hora, solo dejamos fecha
+            preg_match('/^(\d{1,2})\/(\d{1,2})\/(\d{4})\s*/', $xml->Body->GetConsultaAguaResponse->Return->FechaUltimoPago , $matches);
+            if ( $matches[1] && $matches[2] && $matches[3] ) {
+                // parece que tenemos fecha es correcto
+                $date_up_string = $matches[3] . '-' . $matches[2] . '-' . $matches[1] . 'T00:00:00';
+                //drupal_set_message(t("Fecha: $date_up_string"), 'warning');
+                $base_entity->field_pago_fecha_ultimo['und'][0]['value'] = $date_up_string;
+            }
+        }
+        if( isset($xml->Body->GetConsultaAguaResponse->Return->MontoUltimoPagado) && $xml->Body->GetConsultaAguaResponse->Return->MontoUltimoPagado->__toString() ) {
+            // existe registro de ultimo pago
+            $base_entity->field_pago_monto_ultimo['und'][0]['value'] = floatval($xml->Body->GetConsultaAguaResponse->Return->MontoUltimoPagado);
+        }
+
+        if ( isset($xml->Body->GetConsultaAguaResponse->Return->Adeudo->Registro) && ($xml->Body->GetConsultaAguaResponse->Return->Adeudo->Registro->count() > 0)) {
+            // existen registros de adeudo
+            //drupal_set_message(htmlspecialchars(serialize($xml->Body->GetConsultaAguaResponse->Return->Adeudo->asXML())), 'warning');
+ 
+           // encabezado de tabla
+           $paymenttable = array('cell_0_0' => 'Concepto', 'cell_0_1' => 'Monto');
+
+           // filas de tabla
+           $item_count = 0;
+            foreach ($xml->Body->GetConsultaAguaResponse->Return->Adeudo->Registro as $registro) {
+                //drupal_set_message(htmlspecialchars(serialize($registro->asXML())), 'warning');
+                $item_count++;       
+                $concepto = '';
+                $importe = '';
+                if ( isset($registro->Referencia) && $registro->Referencia->__toString()) {
+                    $concepto = htmlspecialchars($registro->Referencia);
+                }
+                if ( isset($registro->Descripcion) && $registro->Descripcion->__toString()) {
+                    $concepto .= '  '. htmlspecialchars($registro->Descripcion);
+                }
+                if ( isset($registro->Importe) && $registro->Importe->__toString()) {
+                    $importe = floatval($registro->Importe);
+                }
+                $first_column_id = 'cell_' . $item_count . '_0';
+                $second_column_id = 'cell_' . $item_count . '_1';
+                $paymenttable[$first_column_id] = $concepto;
+                $paymenttable[$second_column_id] = $importe;
+                //drupal_set_message($concepto, 'warning');
+                //drupal_set_message(htmlspecialchars($registro->Importe), 'warning');
+            }
+            $table_bottom = array('rebuild' => array(
+                                                                               'count_cols' => '2', 'count_rows' => $item_count + 2, 'rebuild' => 'Rebuild Table',
+                                                                           ),
+                                               'import' => array ( 
+                                                                               'tablefield_csv_field_mytablefield_0' => '', 'rebuild_field_mytablefield_0' => 'Cargar CSV',
+                                                                           ),);
+            $paymenttable = array_merge($paymenttable, $table_bottom);
+
+            // drupal_set_message("<p>". htmlspecialchars(serialize($paymenttable)) . "</p>", 'warning');
+            $base_entity->field_tabla_de_pagos['und'][0]['value'] = serialize($paymenttable);
+            // node_save($base_entity);
+        }
+
+    } else {
+        // la nueva ficha no debe quedar registrada debido a que no existe respuesta con datos (por error de webservice)
+        drupal_set_message(t('Sistema está experimentando problemas técnicos al consultar base de datos del municipio. Reintente más tarde.'), 'warning');
+        return FALSE;
+    }
+}
+return TRUE; 
