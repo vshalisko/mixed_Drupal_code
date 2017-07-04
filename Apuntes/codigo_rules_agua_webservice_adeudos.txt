@@ -1,8 +1,20 @@
 // función para consulta de adeudos en WS y su almacenamiento en la ficha
 $debug = 0;  // variable para debugging, cambia a 0 en producción
 
+// determinar periodo elegido por el usuario a pagar (número de meses al futuro y meses históricos): con los últimos ajustes solo quedaron opciones de mensual y anual
+$periodo = 1; // mensual por default
+$var_periodo = 'MENSUAL';  // variable para consulta de WS
+if (isset($base_entity->field_periodo_de_pago['und'][0]['tid'])) {
+     $periodo_term = taxonomy_term_load($base_entity->field_periodo_de_pago['und'][0]['tid']);
+     if ($periodo_term->name == "mensual") { $periodo = 1; $var_periodo = 'MENSUAL'; }
+     if ($periodo_term->name == "anual") { $periodo = 12; $var_periodo = 'ANUAL'; }
+//     if ($periodo_term->name == "semestral") { $periodo = 6; }    // opción deshabilitada
+//     if ($periodo_term->name == "bimestral") { $periodo = 2; }     // opción deshabilidata
+}
+
+
+
 $contrato = $base_entity->field_clave_pago['und'][0]['value'];
-$var_periodo = 'ANUAL';
 
 if (isset($contrato) && is_numeric($contrato) && ($contrato > 0) && ($contrato < 2147483647)) {
     // para esta consulta se requiere tener número de cuenta como cadena de texto rellena de ceros
@@ -58,6 +70,14 @@ if (isset($contrato) && is_numeric($contrato) && ($contrato > 0) && ($contrato <
 
     if ($xml->count() > 0) {
         // consulta regresa algunos datos
+        // tienen que estar ordenados por fecha
+
+        $fecha_inicio_string = '';    // cadena de texto de la fecha de inicio del periodo a pagar
+        $cuota_fija = 0;    // cuota fija se toma de la última fecha en conjunto de registros
+        $tipo_cuota_fija = '';   // tipo de cuota fija  se toma de la última fecha en conjunto de registros
+        // encabezado de tabla de pagos y contador de lineas
+        $paymenttable = array('cell_0_0' => 'Concepto', 'cell_0_1' => 'Monto');
+        $item_count = 0;    // contador de lineas en tabla de conceptos y montos
 
         if( isset($xml->Body->GetConsultaAguaResponse->Return->FechaUltimoPago) && $xml->Body->GetConsultaAguaResponse->Return->FechaUltimoPago->__toString() ) {
             // existe fecha de último pago
@@ -79,16 +99,34 @@ if (isset($contrato) && is_numeric($contrato) && ($contrato > 0) && ($contrato <
             // existen registros de adeudo
             //drupal_set_message(htmlspecialchars(serialize($xml->Body->GetConsultaAguaResponse->Return->Adeudo->asXML())), 'warning');
  
-           // encabezado de tabla
-           $paymenttable = array('cell_0_0' => 'Concepto', 'cell_0_1' => 'Monto');
-
-           // filas de tabla
-           $item_count = 0;
-            foreach ($xml->Body->GetConsultaAguaResponse->Return->Adeudo->Registro as $registro) {
+           // agregar filas de tabla
+           foreach ($xml->Body->GetConsultaAguaResponse->Return->Adeudo->Registro as $registro) {
                 //drupal_set_message(htmlspecialchars(serialize($registro->asXML())), 'warning');
                 $item_count++;       
                 $concepto = '';
                 $importe = '';
+
+                if ( $item_count == 1 ) {
+                    // primera línea en tabla
+                    if ( isset($registro->Referencia) && $registro->Referencia->__toString() ) {
+                        // determinar fecha de inicio de registros de adeudo, se requiere cadena de 6 dígitos
+                        $fecha_inicio_string = preg_replace("/[^0-9]/", '', $registro->Referencia);
+                        if ( strlen($fecha_inicio_string) >= 6 ) {
+                            $fecha_inicio_string = substr($fecha_inicio_string, 0, 6);
+                        } else {
+                            // cadena de texto no cumple con el formato esperado
+                            $fecha_inicio_string = '';
+                        }
+                    }                    
+                }
+
+                if ( isset($registro->CuotaFija) && $registro->CuotaFija->__toString()) {
+                    $cuota_fija = floatval($registro->CuotaFija);
+                }
+                if ( isset($registro->TipoCuota) && $registro->TipoCuota->__toString()) {
+                    $tipo_cuota_fija = htmlspecialchars($registro->TipoCuota);
+                }
+
                 if ( isset($registro->Referencia) && $registro->Referencia->__toString()) {
                     $concepto = htmlspecialchars($registro->Referencia);
                 }
@@ -105,18 +143,56 @@ if (isset($contrato) && is_numeric($contrato) && ($contrato > 0) && ($contrato <
                 //drupal_set_message($concepto, 'warning');
                 //drupal_set_message(htmlspecialchars($registro->Importe), 'warning');
             }
-            $table_bottom = array('rebuild' => array(
+
+         } else {
+             // no existen datos de adeudo
+        }
+
+         if( isset($xml->Body->GetConsultaAguaResponse->Return->Mensaje) && $xml->Body->GetConsultaAguaResponse->Return->Mensaje->__toString() ) {
+            // existe mensaje, se requiere colocarlo al final de la tabla de conceptos
+            $item_count++;
+            $first_column_id = 'cell_' . $item_count . '_0';
+            $second_column_id = 'cell_' . $item_count . '_1';
+            $paymenttable[$first_column_id] = htmlspecialchars($xml->Body->GetConsultaAguaResponse->Return->Mensaje);
+            $paymenttable[$second_column_id] = '';
+         }
+
+        // guardar la tabla de adeudos
+        $table_bottom = array('rebuild' => array(
                                                                                'count_cols' => '2', 'count_rows' => $item_count + 2, 'rebuild' => 'Rebuild Table',
                                                                            ),
                                                'import' => array ( 
                                                                                'tablefield_csv_field_mytablefield_0' => '', 'rebuild_field_mytablefield_0' => 'Cargar CSV',
                                                                            ),);
-            $paymenttable = array_merge($paymenttable, $table_bottom);
+        $paymenttable = array_merge($paymenttable, $table_bottom);
+        // drupal_set_message("<p>". htmlspecialchars(serialize($paymenttable)) . "</p>", 'warning');
+        $base_entity->field_tabla_de_pagos['und'][0]['value'] = serialize($paymenttable);
 
-            // drupal_set_message("<p>". htmlspecialchars(serialize($paymenttable)) . "</p>", 'warning');
-            $base_entity->field_tabla_de_pagos['und'][0]['value'] = serialize($paymenttable);
-            // node_save($base_entity);
+        if ($cuota_fija) { 
+            $base_entity->field_pago_cuota_fija['und'][0]['value'] = $cuota_fija;
         }
+        if ($tipo_cuota_fija) { 
+            $base_entity->field_pago_tipo_cuota_fija['und'][0]['value'] = $tipo_cuota_fija;
+        }
+
+       // determinar el intervalo a pagar (de fecha de adeudo más antiguo al fin de periodo de pago elegido por el usuario)
+       $fecha_actual = new DateTime(date("Y-m-d"));   
+       $fecha_limite = new DateTime(date("Y-m-d"));    // fecha del límite de periodo elegido
+       $fecha_inicio = new DateTime(date("Y-m-d"));    // fecha de inicio de periodo (adeudo más antiguo)
+       $intervalo_formato = 'P' . $periodo . 'M';
+       $fecha_limite->add(new DateInterval($intervalo_formato));
+       if ( $fecha_inicio_string ) {
+           $fecha_inicio = DateTime::createFromFormat('Ym', $fecha_inicio_string);
+       } else {
+           $fecha_inicio = $fecha_actual;
+       }
+       if ( $periodo == 1 ) {
+           // pago mensual
+           $base_entity->field_pago_periodo_texto['und'][0]['value'] = 'Pago del ' .  $fecha_inicio->format("Y-m") .' al ' . $fecha_limite->format("Y-m");
+       } else {
+           // pago anual
+           $base_entity->field_pago_periodo_texto['und'][0]['value'] = 'Pago del ' . $fecha_inicio->format("Y-m") .' al ' . $fecha_actual->format("Y") . '-12';
+       }
 
     } else {
         // la nueva ficha no debe quedar registrada debido a que no existe respuesta con datos (por error de webservice)
@@ -125,7 +201,6 @@ if (isset($contrato) && is_numeric($contrato) && ($contrato > 0) && ($contrato <
     }
 }
 return TRUE; 
-
 
 
 
