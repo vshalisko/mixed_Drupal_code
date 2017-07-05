@@ -1,0 +1,57 @@
+$entity_field[0]['value'] = "";
+
+// verificacion de roles
+$f_roles = array("F","F_AP","F_CA","F_DU","F_EC","F_OP","F_PL","F_RH","F_SP");
+$s_roles = array("S","S_AP","S_CA","S_DU","S_EC","S_OP","S_PL","S_RH","S_SP");
+$a_roles = array("A","ASUPER","ASuper");
+
+global $base_url;
+global $user;
+$roles = $user->roles;
+$role='';
+foreach ($roles as &$r) {
+   if ($r != 'authenticated user') {
+      if (in_array($r, $a_roles)) {
+          // admin role - max priority
+          $role=$r;
+      } elseif ( in_array($r, $s_roles) && !in_array($role, $a_roles)) {
+         // supervisor role - second priority
+         $role=$r;
+      } elseif (in_array($r, $f_roles) && !in_array($role, $s_roles) && !in_array($role, $a_roles)) {
+         // ordinary clerk role
+         $role=$r;
+      }
+  }
+}
+unset($r);
+
+$edit_allowed_adeudo = 0;    // editado de adeudo deshabilitado por defecto
+if (in_array($role, $a_roles)) {
+    // usuario autorizado para editar adeudo
+    $edit_allowed_adeudo = 1;
+}
+
+$edit_allowed_captura_pago = 0;  // captura de pago deshabilitado por defecto
+if ($role == "F_RH" || $role == "S_RH" || $role == "F_OP" || $role == "S_OP" || in_array($role, $a_roles)) {
+    // usuario autorizado para capturar pago
+    $edit_allowed_captura_pago = 1;
+}
+
+$is_node = 0;
+if (current_path()) {
+    $is_node = preg_match("/^node\//", current_path());
+}
+
+if ($is_node && ($edit_allowed_adeudo || $edit_allowed_captura_pago) ) {
+         if(!isset($entity->field_pago_referencia_bancaria['und'][0]['value'])) {
+              // datos pueden editarse solo en caso que no existe la referencia bancaria (criterio de pago ya realizado)
+              $entity_field[0]['value'] .= '<div>';
+              if ( $edit_allowed_adeudo ) {
+                  $entity_field[0]['value'] .= '<a href="'. $base_url .'/editar-pago/'. $entity->nid .'">Editar adeudo (opcional)</a><br />';
+              }
+              if ( $edit_allowed_captura_pago ) {
+                  $entity_field[0]['value'] .= '<a href="'. $base_url .'/referencia-bancaria-pago/'. $entity->nid .'">Capturar referencia bancaria (para pagos realizados)</a><br />';
+              }
+              $entity_field[0]['value'] .= '</div>';
+         }  
+}
