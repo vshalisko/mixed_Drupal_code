@@ -1,0 +1,180 @@
+// función para consulta de nombre del contribuyente, domicilio y otros datos sobre la cuenta catastral en WS y su almacenamiento en la ficha
+$debug = 0;  // variable para debugging, cambia a 0 en producción
+
+// número de cuenta catastral
+$contrato = $base_entity->field_clave_pago['und'][0]['value'];
+
+// limpiar cadena de texto del numero de contrato (por seguridad)
+$contrato = preg_replace("/[^0-9URur]/", "", $contrato);
+
+if (isset($contrato)) {
+
+    $var_contrato = $contrato;
+
+    // ==================================
+    // use of ws_nextcode module
+    $xml = new SimpleXMLElement('<Body></Body>');
+    try{
+        // load module for communication
+        drupal_load('module','ws_nextcode');
+        $service = new WService();
+        $contrato_obj = new getCuentaPredial();
+        //Define values of parameters used by webservice
+        $contrato_obj->no_Cuenta=$var_contrato;
+        //Send petition to server with object contrato and catch result in $result
+        $result=$service->getCuentaPredial($contrato_obj);
+
+        $var=get_object_vars($result);
+        $keys = array_keys($var);
+        $soap_result = $var[$keys[0]]->any;  // According to WS structure here go any content
+        //Clean soap response information and create an array with important information
+        $clean_soap_result = str_ireplace('ns2:','',$soap_result);
+        $clean_soap_result = str_ireplace('soap:','',$clean_soap_result);
+        $xml = simplexml_load_string($clean_soap_result);
+
+        if ($debug) {
+            // format XML for output
+            if ($xml->count() > 0) {
+                $domxml = new DOMDocument('1.0');
+                $domxml->preserveWhiteSpace = false;
+                $domxml->formatOutput = true;
+                $domxml->loadXML($xml->asXML());
+                $xml_format = $domxml->saveXML();
+            }
+            $xml_print = "<pre>CUENTA: $contrato, XML: " . htmlspecialchars(serialize($xml_format)) . "</pre>";
+            drupal_set_message($xml_print, 'warning');
+        }
+    }
+    catch (SoapFault $e){
+        //echo('<div class="messages warning"><h2 class="element-invisible">Mensaje de advertencia</h2>');
+        //echo('<ul>');
+        //echo('<li>Su solicitud no puede ser completada. Sistema está experimentando problemas técnicos al consultar base de datos del municipio. Regrese más tarde.</li>');
+        //echo("<li>Código de error: $e->faultcode</li>");
+        //echo('</ul></div>');
+        drupal_set_message(t('Su solicitud no puede ser completada. Sistema está experimentando problemas técnicos al consultar base de datos del municipio. Regrese más tarde.'), 'warning');
+        drupal_set_message(t("Código de error: $e->faultcode"), 'warning');
+    }
+    // ==================================
+
+    if ($xml->count() > 0) {
+        // consulta regresa algunos datos
+        if( isset($xml->Body->GetConsultaAguaResponse->Return->Contribuyente) && $xml->Body->GetConsultaAguaResponse->Return->Contribuyente->__toString() ) {
+            // existe nombre del contribuyente
+            $base_entity->field_pagos_contribuyente['und'][0]['value'] = htmlspecialchars($xml->Body->GetConsultaAguaResponse->Return->Contribuyente);
+        }
+        if( isset($xml->Body->GetConsultaAguaResponse->Return->Domicilio) && $xml->Body->GetConsultaAguaResponse->Return->Domicilio->__toString() ) {
+            // existe nombre del domicilio
+            $base_entity->field_pagos_domicilio['und'][0]['value'] = htmlspecialchars($xml->Body->GetConsultaAguaResponse->Return->Domicilio);
+            if( isset($xml->Body->GetConsultaAguaResponse->Return->Exterior) && $xml->Body->GetConsultaAguaResponse->Return->Exterior->__toString() ) {
+                // existe numero exterior
+                $base_entity->field_pagos_domicilio['und'][0]['value'] .= " ". htmlspecialchars($xml->Body->GetConsultaAguaResponse->Return->Exterior);
+            }
+            if( isset($xml->Body->GetConsultaAguaResponse->Return->Interior) && $xml->Body->GetConsultaAguaResponse->Return->Interior->__toString() ) {
+                // existe numero interior
+                $base_entity->field_pagos_domicilio['und'][0]['value'] .= " interior ". htmlspecialchars($xml->Body->GetConsultaAguaResponse->Return->Interior);
+            }
+        }
+        if( isset($xml->Body->GetConsultaAguaResponse->Return->Colonia) && $xml->Body->GetConsultaAguaResponse->Return->Colonia->__toString() ) {
+            // existe colonia
+            $base_entity->field_pagos_colonia['und'][0]['value'] = htmlspecialchars($xml->Body->GetConsultaAguaResponse->Return->Colonia);
+        }
+        if( isset($xml->Body->GetConsultaAguaResponse->Return->Localidad) && $xml->Body->GetConsultaAguaResponse->Return->Localidad->__toString() ) {
+            // existe localidad
+            $base_entity->field_pago_localidad['und'][0]['value'] = htmlspecialchars($xml->Body->GetConsultaAguaResponse->Return->Localidad);
+        }
+        if( isset($xml->Body->GetConsultaAguaResponse->Return->Calles) && $xml->Body->GetConsultaAguaResponse->Return->Calles->__toString() ) {
+            if (trim($xml->Body->GetConsultaAguaResponse->Return->Calles) != "y") {
+                // existen datos sobre entre calles
+                $base_entity->field_pago_entre_calles['und'][0]['value'] = htmlspecialchars($xml->Body->GetConsultaAguaResponse->Return->Calles);
+            }
+        }
+        if( isset($xml->Body->GetConsultaAguaResponse->Return->ClaveCatastral) && $xml->Body->GetConsultaAguaResponse->Return->ClaveCatastral->__toString() ) {
+            // existe clave catastral
+            $base_entity->field_pago_clave_catastral['und'][0]['value'] = htmlspecialchars($xml->Body->GetConsultaAguaResponse->Return->ClaveCatastral);
+        }
+        if( isset($xml->Body->GetConsultaAguaResponse->Return->ValorCatastral) && $xml->Body->GetConsultaAguaResponse->Return->ValorCatastral->__toString() ) {
+            // existe valor catastral
+            $base_entity->field_pago_valor_catastral['und'][0]['value'] = floatval($xml->Body->GetConsultaAguaResponse->Return->ValorCatastral);
+        }
+        if( isset($xml->Body->GetConsultaAguaResponse->Return->Tasa) && $xml->Body->GetConsultaAguaResponse->Return->Tasa->__toString() ) {
+            // existe tasa catastral
+            $base_entity->field_pago_tasa_catastral['und'][0]['value'] = floatval($xml->Body->GetConsultaAguaResponse->Return->Tasa);
+        }
+        if( isset($xml->Body->GetConsultaAguaResponse->Return->SuperficieTerreno) && $xml->Body->GetConsultaAguaResponse->Return->SuperficieTerreno->__toString() ) {
+            // existe superficie del terreno
+            $base_entity->field_pago_superficie_terreno['und'][0]['value'] = floatval($xml->Body->GetConsultaAguaResponse->Return->SuperficieTerreno);
+        }
+        if( isset($xml->Body->GetConsultaAguaResponse->Return->SuperficieConstruccion) && $xml->Body->GetConsultaAguaResponse->Return->SuperficieConstruccion->__toString() ) {
+            // existe superficie de construcción
+            $base_entity->field_pago_superficie_constr['und'][0]['value'] = floatval($xml->Body->GetConsultaAguaResponse->Return->SuperficieConstruccion);
+        }
+        if( isset($xml->Body->GetConsultaAguaResponse->Return->TipoPredio) && $xml->Body->GetConsultaAguaResponse->Return->TipoPredio->__toString() ) {
+            // existe tipo de predio
+            $base_entity->field_pago_tipo_predio['und'][0]['value'] = intval($xml->Body->GetConsultaAguaResponse->Return->TipoPredio);
+        }
+        if( isset($xml->Body->GetConsultaAguaResponse->Return->DomicilioNotificacion) && $xml->Body->GetConsultaAguaResponse->Return->DomicilioNotificacion->__toString() ) {
+            // existe domicilio para notificación
+            $base_entity->field_pago_domicilio_notif['und'][0]['value'] = htmlspecialchars($xml->Body->GetConsultaAguaResponse->Return->DomicilioNotificacion);
+        }
+
+    } else {
+        // la nueva ficha no debe quedar registrada debido a que no existe respuesta con datos (por error de webservice)
+        drupal_set_message(t('Su solicitud no puede ser completada. Sistema está experimentando problemas técnicos al consultar base de datos del municipio. Regrese más tarde.'), 'warning');
+        return FALSE;
+    }
+
+
+
+
+
+
+
+// ========================= anterior
+          $query = "SELECT pad.cpadnombre, pad.cpadcvecat, padco.ccolnombre, pad.npadcodpos, padc.ccalnombre, pad.cpadubinoe, pad.cpadubinoi,
+          pad.npadsupter, pad.npadsupcon, pad.npadvalter, pad.npadvalcon, pad.npadvalcat 
+          FROM padron_catastro.padron pad
+          INNER JOIN padron_catastro.calles padc ON padc.ncalcvecal=pad.npadubical
+          INNER JOIN padron_catastro.colonias padco ON padco.ncolcvecol=pad.npadubicol
+          WHERE pad.cpadnumcta = '". $contrato ."' LIMIT 1";
+          $sql_result = db_query($query)->fetchObject();
+          if ($sql_result) {
+                    if (isset($sql_result->cpadcvecat) && trim($sql_result->cpadcvecat, " ")) {
+                              $base_entity->field_datos_auxiliares2['und'][0]['value'] = 'Clave catastral: ' .$sql_result->cpadcvecat;
+                    } else {
+                               $base_entity->field_datos_auxiliares2['und'][0]['value'] = 'Clave catastral: sin datos';
+                    }
+
+                    // temporalmente, sustituir por código de descuentos
+                    $base_entity->field_datos_auxiliares2['und'][1]['value'] = 'Descuento por ley de ingresos: sin datos';
+
+                    if (isset($sql_result->npadvalcat) && trim($sql_result->npadvalcat, " ")) {
+                              $base_entity->field_datos_auxiliares2['und'][2]['value'] = 'Valor catastral: ' .$sql_result->npadvalcat;
+                    } else {
+                               $base_entity->field_datos_auxiliares2['und'][2]['value'] = 'Valor catastral: sin datos';
+                    }
+
+                    // temporalmente, sustituir por código de tasa catastral
+                    $base_entity->field_datos_auxiliares2['und'][3]['value'] = 'Tasa catastral: sin datos';
+
+                    if (isset($sql_result->npadsupter) && trim($sql_result->npadsupter, " ")) {
+                              $base_entity->field_datos_auxiliares2['und'][4]['value'] = 'Superficie del terreno: ' . substr($sql_result->npadsupter,1);
+                    } else {
+                               $base_entity->field_datos_auxiliares2['und'][4]['value'] = 'Superficie del terreno: sin datos';
+                    }
+                    if (isset($sql_result->npadsupcon) && trim($sql_result->npadsupcon, " ")) {
+                              $base_entity->field_datos_auxiliares2['und'][5]['value'] = 'Superficie de construcción: ' . substr($sql_result->npadsupcon,1);
+                    } else {
+                               $base_entity->field_datos_auxiliares2['und'][5]['value'] = 'Superficie de construcción: sin datos';
+                    }
+
+                    // temporalmente, sustituir por código de tipo del terreno
+                    $base_entity->field_datos_auxiliares2['und'][6]['value'] = 'Tipo del terreno: sin datos';
+                    // temporalmente, sustituir por código de domicilio notarial
+                    $base_entity->field_datos_auxiliares2['und'][7]['value'] = 'Domicilio notarial: sin datos';
+
+          } else {
+                    drupal_set_message(t('Cuenta predial '. $contrato .' no fue encontrada en DB local'), 'warning');
+          }
+}
+
+return TRUE; 
