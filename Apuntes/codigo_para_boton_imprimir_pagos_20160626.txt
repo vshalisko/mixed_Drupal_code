@@ -1,72 +1,207 @@
 $entity_field[0]['value'] = "";
 
-$secretario_finanzas = "A. Efren L�pez Torrez"; // temporalmente
+$secretario_finanzas_term = taxonomy_term_load(252);
+$secretario_finanzas = $secretario_finanzas_term->name;
 
-if (isset($entity->field_clave_pago) && isset($entity->field_clave_pago['und'][0]['value'])) {
+// verificacion de roles
+$f_roles = array("F","F_AP","F_CA","F_DU","F_EC","F_OP","F_PL","F_RH","F_SP");
+$s_roles = array("S","S_AP","S_CA","S_DU","S_EC","S_OP","S_PL","S_RH","S_SP");
+$a_roles = array("A","ASUPER","ASuper");
+
+global $user;
+global $base_url;
+$roles = $user->roles;
+
+$edit_allowed = 0;
+$edit_disabled = 0;
+foreach ($roles as &$r) {
+// drupal_set_message($r, 'warning');
+   if ($r == 'P') {
+       $edit_disabled = 1;
+   }
+   if ($r != 'authenticated user' && $r != 'P') {
+      if (in_array($r, $a_roles) || in_array($r, $s_roles) || in_array($r, $f_roles)) {
+         // usuario autorizado para editar fichas
+              $edit_allowed = 1;
+      }
+   }
+}
+
+// verificación de ruta a nodo
+$is_node = 0;
+$my_path = current_path();
+//$entity_field[0]['value'] .= $my_path;
+if (preg_match("/^node/", $my_path)) {
+    // Se encontró un nodo
+    $is_node = 1;
+} else {
+    // No es un nodo
+    $is_node = 0;
+}
+
+//obtener número de folio del titulo de nodo
+$folio = "sin folio";
+if (preg_match("/([A-Za-z0-9]+)$/", $entity->title, $coincidencias)) {
+     $folio = $coincidencias[0];
+}
+
+if (isset($entity->field_clave_pago) && isset($entity->field_clave_pago['und'][0]['value']) && $is_node) {
 // Tenemos un valor de clave de pago (numero de contrato, etc.)
-if (isset($entity->field_tipo_de_pago) && isset($entity->field_tipo_de_pago['und'][0]['tid'])) {
-$tipo_pago = taxonomy_term_load($entity->field_tipo_de_pago['und'][0]['tid']);
-if( $tipo_pago->name == 'Pago de agua') {
-     $entity_field[0]['value'] .= '<form method="post" action="../../PDFTemplates/recibo_agua.php" target="_blank">';
-     //$entity_field[0]['value'] .= '<form method="post" action="../../php_info.php">';
-     if (isset($entity->field_clave_pago['und'][0]['value'])) {
-          $entity_field[0]['value'] .= '<input  class="input-hidden" type="hidden" name="id_de_contrato" value="' . $entity->field_clave_pago['und'][0]['value'] . '">';
-     }
-     if (isset($entity->field_pagos_contribuyente['und'][0]['value'])) {
-          $entity_field[0]['value'] .= '<input  class="input-hidden" type="hidden" name="nombre" value="' . $entity->field_pagos_contribuyente['und'][0]['value'] . '">';
-     }
-     if (isset($entity->field_pagos_domicilio['und'][0]['value'])) {
-          $entity_field[0]['value'] .= '<input  class="input-hidden" type="hidden" name="domicilio" value="' . $entity->field_pagos_domicilio['und'][0]['value'] . '">';
-     }
-     if (isset($entity->field_pagos_colonia['und'][0]['value'])) {
-          $entity_field[0]['value'] .= '<input  class="input-hidden" type="hidden" name="colonia" value="' . $entity->field_pagos_colonia['und'][0]['value'] . '">';
-     }     
-     if (isset($entity->field_subtotal['und'][0]['value'])) {
-          $entity_field[0]['value'] .= '<input  class="input-hidden" type="hidden" name="subtotal" value="' . $entity->field_subtotal['und'][0]['value'] . '">';
-     }    
-     if (isset($entity->field_subtotal['und'][0]['value'])) {
-          $entity_field[0]['value'] .= '<input  class="input-hidden" type="hidden" name="subtotal" value="' . $entity->field_subtotal['und'][0]['value'] . '">';
-     }    
-     if (isset($entity->field_pagos_cobranza['und'][0]['value'])) {
-          $entity_field[0]['value'] .= '<input  class="input-hidden" type="hidden" name="gcobranza" value="' . $entity->field_pagos_cobranza['und'][0]['value'] . '">';
-     }    
-     if (isset($entity->field_pagos_recargos['und'][0]['value'])) {
-          $entity_field[0]['value'] .= '<input  class="input-hidden" type="hidden" name="recargo" value="' . $entity->field_pagos_recargos['und'][0]['value'] . '">';
-     }    
-     if (isset($entity->field_total['und'][0]['value'])) {
-          $entity_field[0]['value'] .= '<input  class="input-hidden" type="hidden" name="total" value="' . $entity->field_total['und'][0]['value'] . '">';
-     }    
-     if (isset($entity->field_datos_auxiliares['und'][2]['value'])) {
-          $entity_field[0]['value'] .= '<input  class="input-hidden" type="hidden" name="periodo_pago" value="' . $entity->field_datos_auxiliares['und'][2]['value'] . '">';
-     }    
-     if (isset($entity->field_datos_auxiliares['und'][0]['value'])) {
-          $entity_field[0]['value'] .= '<input  class="input-hidden" type="hidden" name="cuota_fija" value="' . substr($entity->field_datos_auxiliares['und'][0]['value'], 13) . '">';
-     }
-     if (isset($entity->field_datos_auxiliares['und'][1]['value'])) {
-          $entity_field[0]['value'] .= '<input  class="input-hidden" type="hidden" name="tarifa" value="' . $entity->field_datos_auxiliares['und'][1]['value'] . '">';
-     }
-     if (isset($entity->field_tabla_de_pagos['und'][0]['value'])) {
-          $table = unserialize($entity->field_tabla_de_pagos['und'][0]['value']);
-          $conceptos_lista = $table['cell_1_0'] . ' | ' . $table['cell_2_0'] . ' | ' . $table['cell_3_0'];
-          $montos_lista = $table['cell_1_1'] . ' | ' . $table['cell_2_1'] . ' | ' . $table['cell_3_1'];
-          $entity_field[0]['value'] .= '<input  class="input-hidden" type="hidden" name="concepto" value="' . $conceptos_lista . '">';
-          $entity_field[0]['value'] .= '<input  class="input-hidden" type="hidden" name="importe" value="' . $montos_lista . '">';
-     }
-     if (isset($secretario_finanzas)) {
-          $entity_field[0]['value'] .= '<input  class="input-hidden" type="hidden" name="nomsecretario" value="' . $secretario_finanzas . '">';
-     }
+     if (isset($entity->field_tipo_de_pago) && isset($entity->field_tipo_de_pago['und'][0]['tid'])) {
+          $tipo_pago = taxonomy_term_load($entity->field_tipo_de_pago['und'][0]['tid']);
+          if( $tipo_pago->name == 'Pago de agua') {
+               $entity_field[0]['value'] .= '<form method="post" action="../../PDFTemplates/recibo.php" target="_blank">';
+               $entity_field[0]['value'] .= '<input  class="input-hidden" type="hidden" name="tipo_de_pago" value="' . $tipo_pago->name . '">';
+          } elseif ($tipo_pago->name == 'Pago de predial') { 
+              $entity_field[0]['value'] .= '<form method="post" action="../../PDFTemplates/recibo.php" target="_blank">';
+               $entity_field[0]['value'] .= '<input  class="input-hidden" type="hidden" name="tipo_de_pago" value="' . $tipo_pago->name . '">';
+          } else {
+              $entity_field[0]['value'] .= '<form method="post" target="_blank">';
+          }
+          if ( ($tipo_pago->name == 'Pago de agua') || ($tipo_pago->name == 'Pago de predial') ) {
+               $entity_field[0]['value'] .= '<input  class="input-hidden" type="hidden" name="folio" value="' . $folio . '">';
+               if (isset($entity->field_clave_pago['und'][0]['value'])) {
+                    $entity_field[0]['value'] .= '<input  class="input-hidden" type="hidden" name="id_de_contrato" value="' . $entity->field_clave_pago['und'][0]['value'] . '">';
+               }
+               if (isset($entity->field_pagos_contribuyente['und'][0]['value'])) {
+                    $entity_field[0]['value'] .= '<input  class="input-hidden" type="hidden" name="nombre" value="' . $entity->field_pagos_contribuyente['und'][0]['value'] . '">';
+               }
+               if (isset($entity->field_pagos_domicilio['und'][0]['value'])) {
+                    $entity_field[0]['value'] .= '<input  class="input-hidden" type="hidden" name="domicilio" value="' . $entity->field_pagos_domicilio['und'][0]['value'] . '">';
+               }
+               if (isset($entity->field_pagos_colonia['und'][0]['value'])) {
+                    $entity_field[0]['value'] .= '<input  class="input-hidden" type="hidden" name="colonia" value="' . $entity->field_pagos_colonia['und'][0]['value'] . '">';
+               }     
+               if (isset($entity->field_subtotal['und'][0]['value'])) {
+                    $entity_field[0]['value'] .= '<input  class="input-hidden" type="hidden" name="subtotal" value="' . $entity->field_subtotal['und'][0]['value'] . '">';
+               }    
+               if (isset($entity->field_pagos_cobranza['und'][0]['value'])) {
+                    $entity_field[0]['value'] .= '<input  class="input-hidden" type="hidden" name="gcobranza" value="' . $entity->field_pagos_cobranza['und'][0]['value'] . '">';
+               }    
+               if (isset($entity->field_pagos_recargos['und'][0]['value'])) {
+                    $entity_field[0]['value'] .= '<input  class="input-hidden" type="hidden" name="recargo" value="' . $entity->field_pagos_recargos['und'][0]['value'] . '">';
+               }    
+               if (isset($entity->field_total['und'][0]['value'])) {
+                    $entity_field[0]['value'] .= '<input  class="input-hidden" type="hidden" name="total" value="' . $entity->field_total['und'][0]['value'] . '">';
+               }    
+               if (isset($entity->field_pago_periodo_texto['und'][0]['value'])) {
+                    $entity_field[0]['value'] .= '<input  class="input-hidden" type="hidden" name="periodo_de_pago" value="' . $entity->field_pago_periodo_texto['und'][0]['value'] . '">';
+               }    
+               if (isset($entity->field_pago_cuota_fija['und'][0]['value'])) {
+                    $entity_field[0]['value'] .= '<input  class="input-hidden" type="hidden" name="cuota_fija" value="' . $entity->field_pago_cuota_fija['und'][0]['value'] . '">';
+               }    
+               if (isset($entity->field_pago_tipo_cuota_fija['und'][0]['value'])) {
+                    $entity_field[0]['value'] .= '<input  class="input-hidden" type="hidden" name="tarifa" value="' . $entity->field_pago_tipo_cuota_fija['und'][0]['value'] . '">';
+               }    
 
-     $entity_field[0]['value'] .= '<input  class="input-hidden" type="hidden" name="id_de_nodo" value="' . $entity->nid . '">'; 
-     $entity_field[0]['value'] .= '<button type="submit">Imprimir</button></form>';
-}
-if($tipo_pago->name == 'Pago de predial') { 
-    $entity_field[0]['value'] .= '<form method="post" action="../../PDFTemplates/recibo_predial.php" target="_blank">';
-   //  $entity_field[0]['value'] .= '<form method="post" action="../../php_info.php">'; 
-     $entity_field[0]['value'] .= '<input  class="input-hidden" type="hidden" name="numero_licencia" value="' . $entity->field_clave_pago['und'][0]['value']. '">';
-     $entity_field[0]['value'] .= '<input  class="input-hidden" type="hidden" name="id_de_nodo" value="' . $entity->nid . '">';
-     $entity_field[0]['value'] .= '<button type="submit">Imprimir</button></form>';
-}
-} else { $entity_field[0]['value'] .= '.'; }
+// ============== cosas para pago de predial - a corregir con los datos de WS ======================
+               if (isset($entity->field_datos_auxiliares2['und'][0]['value']) && is_string($entity->field_datos_auxiliares2['und'][0]['value'])) {
+                    // clave catastral
+                    $l = 17;
+                    if ((strlen($entity->field_datos_auxiliares2['und'][0]['value']) > $l) && (substr($entity->field_datos_auxiliares2['und'][0]['value'], $l) != 'sin datos')) {
+                          $entity_field[0]['value'] .= '<input  class="input-hidden" type="hidden" name="clave_catastral" value="' . substr($entity->field_datos_auxiliares2['und'][0]['value'], $l) . '">';
+                    }
+               }
+               if (isset($entity->field_datos_auxiliares2['und'][1]['value']) && is_string($entity->field_datos_auxiliares2['und'][1]['value'])) {
+                    // descuento por ley de ingresos
+                    $l = 32;
+                    if ((strlen($entity->field_datos_auxiliares2['und'][1]['value']) > $l) && (substr($entity->field_datos_auxiliares2['und'][1]['value'], $l) != 'sin datos')) {
+                          $entity_field[0]['value'] .= '<input  class="input-hidden" type="hidden" name="descuento" value="' . substr($entity->field_datos_auxiliares2['und'][1]['value'], $l) . '">';
+                    }
+               }
+               if (isset($entity->field_datos_auxiliares2['und'][2]['value']) && is_string($entity->field_datos_auxiliares2['und'][2]['value'])) {
+                    // valor catastral
+                    $l = 17;
+                    if ((strlen($entity->field_datos_auxiliares2['und'][2]['value']) > $l) && (substr($entity->field_datos_auxiliares2['und'][2]['value'], $l) != 'sin datos')) {
+                          $entity_field[0]['value'] .= '<input  class="input-hidden" type="hidden" name="valor_catastral" value="' . substr($entity->field_datos_auxiliares2['und'][2]['value'], $l) . '">';
+                    }
+               }
+               if (isset($entity->field_datos_auxiliares2['und'][3]['value']) && is_string($entity->field_datos_auxiliares2['und'][3]['value'])) {
+                    // tasa catastral
+                    $l = 16;
+                    if ((strlen($entity->field_datos_auxiliares2['und'][3]['value']) > $l) && (substr($entity->field_datos_auxiliares2['und'][3]['value'], $l) != 'sin datos')) {
+                          $entity_field[0]['value'] .= '<input  class="input-hidden" type="hidden" name="tasa_catastral" value="' . substr($entity->field_datos_auxiliares2['und'][3]['value'], $l) . '">';
+                    }
+               }
+               if (isset($entity->field_datos_auxiliares2['und'][4]['value']) && is_string($entity->field_datos_auxiliares2['und'][4]['value'])) {
+                    // superficie del terreno
+                    $l = 24;
+                    if ((strlen($entity->field_datos_auxiliares2['und'][4]['value']) > $l) && (substr($entity->field_datos_auxiliares2['und'][4]['value'], $l) != 'sin datos')) {
+                          $entity_field[0]['value'] .= '<input  class="input-hidden" type="hidden" name="superficie_terreno" value="' . substr($entity->field_datos_auxiliares2['und'][4]['value'], $l) . '">';
+                    }
+               }
+               if (isset($entity->field_datos_auxiliares2['und'][5]['value']) && is_string($entity->field_datos_auxiliares2['und'][5]['value'])) {
+                    // superficie de construccion
+                    $l = 29;
+                    if ((strlen($entity->field_datos_auxiliares2['und'][5]['value']) > $l) && (substr($entity->field_datos_auxiliares2['und'][5]['value'], $l) != 'sin datos')) {
+                          $entity_field[0]['value'] .= '<input  class="input-hidden" type="hidden" name="superficie_construccion" value="' . substr($entity->field_datos_auxiliares2['und'][5]['value'], $l) . '">';
+                    }
+               }
+               if (isset($entity->field_datos_auxiliares2['und'][6]['value']) && is_string($entity->field_datos_auxiliares2['und'][6]['value'])) {
+                    // tipo del terreno
+                    $l = 18;
+                    if ((strlen($entity->field_datos_auxiliares2['und'][6]['value']) > $l) && (substr($entity->field_datos_auxiliares2['und'][6]['value'], $l) != 'sin datos')) {
+                          $entity_field[0]['value'] .= '<input  class="input-hidden" type="hidden" name="tipo_terreno" value="' . substr($entity->field_datos_auxiliares2['und'][6]['value'], $l) . '">';
+                    }
+               }
+               if (isset($entity->field_datos_auxiliares2['und'][7]['value']) && is_string($entity->field_datos_auxiliares2['und'][7]['value'])) {
+                    // domicilio notarial
+                    $l = 20;
+                    if ((strlen($entity->field_datos_auxiliares2['und'][7]['value']) > $l) && (substr($entity->field_datos_auxiliares2['und'][7]['value'], $l) != 'sin datos')) {
+                          $entity_field[0]['value'] .= '<input  class="input-hidden" type="hidden" name="domicilio_notarial" value="' . substr($entity->field_datos_auxiliares2['und'][7]['value'], $l) . '">';
+                    }
+               }
+               if (isset($entity->field_datos_auxiliares2['und'][8]['value']) && is_string($entity->field_datos_auxiliares2['und'][8]['value'])) {
+                    // periodo de pago en recibos de predial
+                    $l = 9;
+                    if ((strlen($entity->field_datos_auxiliares2['und'][8]['value']) > $l) && (substr($entity->field_datos_auxiliares2['und'][8]['value'], $l) != 'sin datos')) {
+                          $entity_field[0]['value'] .= '<input  class="input-hidden" type="hidden" name="tarifa" value="' . substr($entity->field_datos_auxiliares2['und'][8]['value'], $l) . '">';
+                    }
+               }
+
+               if (isset($entity->field_tabla_de_pagos['und'][0]['value'])) {
+                    $table = unserialize($entity->field_tabla_de_pagos['und'][0]['value']);
+                    $conceptos_lista = '';
+                    $montos_lista = '';
+                    for ( $i=2; $i <= $table['rebuild']['count_rows']; $i++) {
+                             $j = $i - 1;
+                              $clave_concepto = 'cell_'. $j .'_0';
+                              $clave_importe = 'cell_'. $j .'_1';
+                              if ($conceptos_lista) { $conceptos_lista .= ' | ' . $table[$clave_concepto]; } else { $conceptos_lista .= $table[$clave_concepto]; }
+                              if ($montos_lista) { $montos_lista .= ' | ' . $table[$clave_importe]; } else { $montos_lista .= $table[$clave_importe]; }
+                    }
+                    $entity_field[0]['value'] .= '<input  class="input-hidden" type="hidden" name="concepto" value="' . $conceptos_lista . '">';
+                    $entity_field[0]['value'] .= '<input  class="input-hidden" type="hidden" name="importe" value="' . $montos_lista . '">';
+               }
+
+               if (isset($secretario_finanzas)) {
+                    $entity_field[0]['value'] .= '<input  class="input-hidden" type="hidden" name="nomsecretario" value="' . $secretario_finanzas . '">';
+               }
+
+               $entity_field[0]['value'] .= '<input  class="input-hidden" type="hidden" name="id_de_nodo" value="' . $entity->nid . '">'; 
+               $entity_field[0]['value'] .= '<button type="submit">Imprimir</button></form>';
+
+                  if ( !$edit_allowed && $edit_disabled && $is_node && !isset($entity->field_pago_referencia_bancaria['und'][0]['value']) ) {
+                       // permitir agregar recibo pagado al usuario
+                       $entity_field[0]['value'] .= '<div><a href="'. $base_url .'/anexar-recibo-pago/'. $entity->nid .'">Anexar el recibo pagado</a></div>';
+                  }
+          }
+     }
 }
 
+if(isset($entity->field_pago_referencia_bancaria['und'][0]['value'])) {
+              // recibo se puede imprimir solo en caso que no existe referencia bancaria (criterio de pago ya realizado)
+              // sustituir variable por un valor para el recibo pagado
+              $entity_field[0]['value'] = "<strong><em>Recibo fue pagado. Oprime el botón para reimprimir el recibo.</em></strong>" . $entity_field[0]['value'];
+}  
+
+if(!isset($entity->field_total['und'][0]['value']) || (!$entity->field_total['und'][0]['value'])  || ($entity->field_total['und'][0]['value'] == "0.00") || !isset($entity->field_pago_edited_flag['und'][0]['value'])  || (!$entity->field_pago_edited_flag['und'][0]['value'])) {
+              // recibo no se imprime cuando total esta en ceros o cuando no fue verificado por funcionario
+              // sustituir variable por un valor para el recibo pagado
+              $entity_field[0]['value'] = " <strong><em>El recibo no puede ser generado en este momento. </em></strong><br />";
+              // $entity_field[0]['value'] .= "<strong><em>El recibo estará disponible en breve, el funcionario lo está revisando. Puede consultar más tarde, recibirá un mensaje en su correo cuando esté listo.</em></strong>";
+              $entity_field[0]['value'] .= '<div class="messages warning"><h2 class="element-invisible">Mensaje de advertencia</h2>';
+              $entity_field[0]['value'] .=  '<ul><li>El recibo estará disponible en breve, el funcionario lo está revisando. Puede consultar más tarde, recibirá un mensaje en su correo cuando esté listo.</li></ul></div>';
+              // drupal_set_message(t('El recibo estará disponible en breve, el funcionario lo está revisando. Puede consultar más tarde, recibirá un mensaje en su correo cuando esté listo.'), 'warning', $repeat = 'FALSE');
+}  
 
