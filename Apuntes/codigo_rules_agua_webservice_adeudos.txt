@@ -12,8 +12,6 @@ if (isset($base_entity->field_periodo_de_pago['und'][0]['tid'])) {
 //     if ($periodo_term->name == "bimestral") { $periodo = 2; }     // opción deshabilidata
 }
 
-
-
 $contrato = $base_entity->field_clave_pago['und'][0]['value'];
 
 if (isset($contrato) && is_numeric($contrato) && ($contrato > 0) && ($contrato < 2147483647)) {
@@ -75,6 +73,8 @@ if (isset($contrato) && is_numeric($contrato) && ($contrato > 0) && ($contrato <
         $fecha_inicio_string = '';    // cadena de texto de la fecha de inicio del periodo a pagar
         $cuota_fija = 0;    // cuota fija se toma de la última fecha en conjunto de registros
         $tipo_cuota_fija = '';   // tipo de cuota fija  se toma de la última fecha en conjunto de registros
+        $recargos = 0;    // variable para acumular recargos
+        $descuentos = 0;   // variable para acumular descuentos
         // encabezado de tabla de pagos y contador de lineas
         $paymenttable = array('cell_0_0' => 'Concepto', 'cell_0_1' => 'Monto');
         $item_count = 0;    // contador de lineas en tabla de conceptos y montos
@@ -126,6 +126,16 @@ if (isset($contrato) && is_numeric($contrato) && ($contrato > 0) && ($contrato <
                 if ( isset($registro->TipoCuota) && $registro->TipoCuota->__toString()) {
                     $tipo_cuota_fija = htmlspecialchars($registro->TipoCuota);
                 }
+                if ( isset($registro->ImporteRecargo) && $registro->ImporteRecargo->__toString()) {
+                    $recargos = $recargos + floatval($registro->ImporteRecargo);
+                }
+                if ( isset($registro->ImporteRecargoRegazo) && $registro->ImporteRecargoRegazo->__toString()) {
+                    $recargos = $recargos + floatval($registro->ImporteRecargoRegazo);
+                }
+                // descuentos se tratan como las cantidades a restar del importe
+                if ( isset($registro->Descuento) && $registro->Descuento->__toString()) {
+                    $descuentos = $descuentos + floatval($registro->Descuento);
+                }
 
                 if ( isset($registro->Referencia) && $registro->Referencia->__toString()) {
                     $concepto = htmlspecialchars($registro->Referencia);
@@ -174,6 +184,8 @@ if (isset($contrato) && is_numeric($contrato) && ($contrato > 0) && ($contrato <
         if ($tipo_cuota_fija) { 
             $base_entity->field_pago_tipo_cuota_fija['und'][0]['value'] = $tipo_cuota_fija;
         }
+        $base_entity->field_pagos_recargos['und'][0]['value'] = $recargos;
+
 
        // determinar el intervalo a pagar (de fecha de adeudo más antiguo al fin de periodo de pago elegido por el usuario)
        $fecha_actual = new DateTime(date("Y-m-d"));   
@@ -194,6 +206,46 @@ if (isset($contrato) && is_numeric($contrato) && ($contrato > 0) && ($contrato <
            $base_entity->field_pago_periodo_texto['und'][0]['value'] = 'Pago del ' . $fecha_inicio->format("Y-m") .' al ' . $fecha_actual->format("Y") . '-12';
        }
 
+       // calculo de subtotales y totales
+
+       $subtotal = 0;
+       if (isset($base_entity->field_tabla_de_pagos['und'][0]['value'])) {
+                    $table = unserialize($base_entity->field_tabla_de_pagos['und'][0]['value']);
+                    for ( $i=2; $i <= $table['rebuild']['count_rows']; $i++) {
+                             $j = $i - 1;
+                              $clave_importe = 'cell_'. $j .'_1';
+                              $importe = preg_replace("/[^0-9.]/", "", $table[$clave_importe]);
+                              if (($importe && !is_numeric($importe)) || !$importe) {
+                                  $importe = 0;
+                              }
+                              $subtotal = $subtotal + $importe;
+                    }
+       }
+       $total = $subtotal;
+       if (isset($base_entity->field_pagos_cobranza['und'][0]['value']) && $base_entity->field_pagos_recargos['und'][0]['value']) {
+                    // agregar gastos de cobranza
+                    $total = $total + $base_entity->field_pagos_cobranza['und'][0]['value'];
+       }
+       if (isset($base_entity->field_pagos_recargos['und'][0]['value']) && $base_entity->field_pagos_recargos['und'][0]['value']) {
+                    // agregar recargos
+                    $total = $total + $base_entity->field_pagos_recargos['und'][0]['value'];
+       }
+
+       // next line for debugging
+       // drupal_set_message(t('Subtotal sin datos editados: '. $base_entity->field_subtotal['und'][0]['value'] ), 'warning');
+
+       $base_entity->field_subtotal['und'][0]['value'] = $subtotal;
+
+       // next line for debugging
+       // drupal_set_message(t('Subtotal considerando datos editados: '. $subtotal ), 'warning');
+
+       $base_entity->field_total['und'][0]['value'] = $total;
+
+       if ($total) {
+           // edited flag en caso de que hay cantidades para pagar
+           $base_entity->field_pago_edited_flag['und'][0]['value'] = '1';
+       }
+
     } else {
         // la nueva ficha no debe quedar registrada debido a que no existe respuesta con datos (por error de webservice)
         drupal_set_message(t('Sistema está experimentando problemas técnicos al consultar base de datos del municipio. Reintente más tarde.'), 'warning');
@@ -201,41 +253,3 @@ if (isset($contrato) && is_numeric($contrato) && ($contrato > 0) && ($contrato <
     }
 }
 return TRUE; 
-
-
-
-
-
-
-================================================
-Acciones (calculo de subtotales) - sin esto no funciona tabla (no se actualiza)
-================================================
-$subtotal = 0;
-if (isset($base_entity->field_tabla_de_pagos['und'][0]['value'])) {
-                    $table = unserialize($base_entity->field_tabla_de_pagos['und'][0]['value']);
-                    for ( $i=2; $i <= $table['rebuild']['count_rows']; $i++) {
-                             $j = $i - 1;
-                              $clave_importe = 'cell_'. $j .'_1';
-                              $importe = preg_replace("/[^0-9.]/", "", $table[$clave_importe]);
-                              $subtotal = $subtotal + $importe;
-                    }
-}
-$total = $subtotal;
-if (isset($base_entity->field_pagos_cobranza['und'][0]['value'])) {
-                    $total = $total + $base_entity->field_pagos_cobranza['und'][0]['value'];
-}
-if (isset($base_entity->field_pagos_recargos['und'][0]['value'])) {
-                    $total = $total + $base_entity->field_pagos_recargos['und'][0]['value'];
-}
-// next line for debugging
-// drupal_set_message(t('Subtotal sin datos editados: '. $base_entity->field_subtotal['und'][0]['value'] ), 'warning');
-$base_entity->field_subtotal['und'][0]['value'] = $subtotal;
-// next line for debugging
-// drupal_set_message(t('Subtotal considerando datos editados: '. $subtotal ), 'warning');
-$base_entity->field_total['und'][0]['value'] = $total;
-// next line for debugging
-// drupal_set_message(t('Total considerando datos editados: '. $total ), 'warning');
-
-// debugging
-//drupal_set_message(t('Subtotal grabado: '. $base_entity->field_subtotal['und'][0]['value'] ), 'warning');
-//drupal_set_message(t('Total grabado: '. $base_entity->field_total['und'][0]['value'] ), 'warning');
