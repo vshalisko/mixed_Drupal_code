@@ -84,120 +84,57 @@ if (isset($entity->field_clave_pago) && isset($entity->field_clave_pago['und'][0
                if (isset($entity->field_total['und'][0]['value'])) {
                     $entity_field[0]['value'] .= '<input  class="input-hidden" type="hidden" name="total" value="' . $entity->field_total['und'][0]['value'] . '">';
                }    
-               $fecha_actual = new DateTime(date("Y-m-d"));
-               if (isset($entity->created)) {
-                    $entity_field[0]['value'] .= '<input  class="input-hidden" type="hidden" name="fecha_tramite" value="' . $entity->created . '">';
-
-                    $fecha_actual = new DateTime(date("Y-m-d\TH:i:s\Z",$entity->created));
-               }     
-
-               // determinar numero de meses a pagar (numero de meses al futuro)
-               $periodo = 1; // mensual por default
-               if (isset($entity->field_periodo_de_pago['und'][0]['tid'])) {
-                    $periodo_term = taxonomy_term_load($entity->field_periodo_de_pago['und'][0]['tid']);
-                    $entity_field[0]['value'] .= '<input  class="input-hidden" type="hidden" name="periodo_elegido" value="' . $periodo_term->name . '">';
-                	if ($periodo_term->name == "anual") { $periodo = 12; }
-                	if ($periodo_term->name == "semestral") { $periodo = 6; }
-                	if ($periodo_term->name == "bimestral") { $periodo = 2; }
+               if (isset($entity->field_pago_periodo_texto['und'][0]['value'])) {
+                    $entity_field[0]['value'] .= '<input  class="input-hidden" type="hidden" name="periodo_de_pago" value="' . $entity->field_pago_periodo_texto['und'][0]['value'] . '">';
+               }    
+               if (isset($entity->field_pago_cuota_fija['und'][0]['value'])) {
+                    $entity_field[0]['value'] .= '<input  class="input-hidden" type="hidden" name="cuota_fija" value="' . $entity->field_pago_cuota_fija['und'][0]['value'] . '">';
+               }    
+               if (isset($entity->field_pago_tipo_cuota_fija['und'][0]['value'])) {
+                    $entity_field[0]['value'] .= '<input  class="input-hidden" type="hidden" name="tarifa" value="' . $entity->field_pago_tipo_cuota_fija['und'][0]['value'] . '">';
                }    
 
-               // determinar intervalo a pagar (de fecha actual al fin de periodo de pago elegido por el usuario)
-               $periodo_texto = '';
-               $fecha_limite = new DateTime(date("Y-m-d"));
-               $intervalo_formato = 'P' . $periodo . 'M';
-               $fecha_limite->add(new DateInterval($intervalo_formato));
-               if ( $periodo > 1 ) {
-                              	$periodo_texto = 'de ' . $fecha_actual->format("Y-m") .' a ' . $fecha_limite->format("Y-m");
-               } else {
-                              	$periodo_texto = '' . $fecha_actual->format("Y-m");
-               }
-               $entity_field[0]['value'] .= '<input  class="input-hidden" type="hidden" name="periodo_de_pago" value="' . $periodo_texto . '">';
-//               if (isset($entity->field_datos_auxiliares['und'][2]['value']) && is_string($entity->field_datos_auxiliares['und'][2]['value'])) {
-//                    // periodo de pago en recibos de agua
+// ============== cosas para pago de predial - a corregir con los datos de WS ======================
+
+               if (isset($entity->field_pago_clave_catastral['und'][0]['value'])) {
+                    $entity_field[0]['value'] .= '<input  class="input-hidden" type="hidden" name="clave_catastral" value="' . $entity->field_pago_clave_catastral['und'][0]['value'] . '">';
+               }    
+               if (isset($entity->field_pago_valor_catastral['und'][0]['value'])) {
+                    $entity_field[0]['value'] .= '<input  class="input-hidden" type="hidden" name="valor_catastral" value="' . $entity->field_pago_valor_catastral['und'][0]['value'] . '">';
+               }    
+               if (isset($entity->field_pago_tasa_catastral['und'][0]['value'])) {
+                    $entity_field[0]['value'] .= '<input  class="input-hidden" type="hidden" name="tasa_catastral" value="' . $entity->field_pago_tasa_catastral['und'][0]['value'] . '">';
+               }    
+               if (isset($entity->field_pago_superficie_terreno['und'][0]['value'])) {
+                    $entity_field[0]['value'] .= '<input  class="input-hidden" type="hidden" name="superficie_terreno" value="' . $entity->field_pago_superficie_terreno['und'][0]['value'] . '">';
+               }    
+               if (isset($entity->field_pago_superficie_constr['und'][0]['value'])) {
+                    $entity_field[0]['value'] .= '<input  class="input-hidden" type="hidden" name="superficie_construccion" value="' . $entity->field_pago_superficie_constr['und'][0]['value'] . '">';
+               }    
+               if (isset($entity->field_pago_tipo_predio['und'][0]['value'])) {
+                    $entity_field[0]['value'] .= '<input  class="input-hidden" type="hidden" name="tipo_terreno" value="' . $entity->field_pago_tipo_predio['und'][0]['value'] . '">';
+               }    
+               if (isset($entity->field_pago_domicilio_notif['und'][0]['value'])) {
+                    $entity_field[0]['value'] .= '<input  class="input-hidden" type="hidden" name="domicilio_notarial" value="' . field_pago_domicilio_notif['und'][0]['value'] . '">';
+               }    
+
+// ============ obsoletos a verificar que hacer
+//               if (isset($entity->field_datos_auxiliares2['und'][1]['value']) && is_string($entity->field_datos_auxiliares2['und'][1]['value'])) {
+//                    // descuento por ley de ingresos
+//                    $l = 32;
+//                    if ((strlen($entity->field_datos_auxiliares2['und'][1]['value']) > $l) && (substr($entity->field_datos_auxiliares2['und'][1]['value'], $l) != 'sin datos')) {
+//                          $entity_field[0]['value'] .= '<input  class="input-hidden" type="hidden" name="descuento" value="' . substr($entity->field_datos_auxiliares2['und'][1]['value'], $l) . '">';
+//                    }
+//               }
+
+// ============ obsoletos a verificar que hacer
+//               if (isset($entity->field_datos_auxiliares2['und'][8]['value']) && is_string($entity->field_datos_auxiliares2['und'][8]['value'])) {
+//                    // periodo de pago en recibos de predial
 //                    $l = 9;
-//                    if ((strlen($entity->field_datos_auxiliares['und'][2]['value']) > $l) && (substr($entity->field_datos_auxiliares['und'][2]['value'], $l) != 'sin datos')) {
-//                          $entity_field[0]['value'] .= '<input  class="input-hidden" type="hidden" name="periodo_pago" value="' . substr($entity->field_datos_auxiliares['und'][2]['value'], $l) . '">';
+//                    if ((strlen($entity->field_datos_auxiliares2['und'][8]['value']) > $l) && (substr($entity->field_datos_auxiliares2['und'][8]['value'], $l) != 'sin datos')) {
+//                          $entity_field[0]['value'] .= '<input  class="input-hidden" type="hidden" name="tarifa" value="' . substr($entity->field_datos_auxiliares2['und'][8]['value'], $l) . '">';
 //                    }
 //               }
-
-
-//               if (isset($entity->field_datos_auxiliares['und'][0]['value']) && is_string($entity->field_datos_auxiliares['und'][0]['value'])) {
-//                    // cuota fija en recibos de agua
-//                    $l = 13;
-//                    if ((strlen($entity->field_datos_auxiliares['und'][0]['value']) > $l) && (substr($entity->field_datos_auxiliares['und'][0]['value'], $l) != 'sin datos')) {
-//                          $entity_field[0]['value'] .= '<input  class="input-hidden" type="hidden" name="cuota_fija" value="' . substr($entity->field_datos_auxiliares['und'][0]['value'], $l) . '">';
-//                    }
-//               }
-//               if (isset($entity->field_datos_auxiliares['und'][1]['value']) && is_string($entity->field_datos_auxiliares['und'][1]['value'])) {
-//                    // tarifa en recibos de agua
-//                    $l = 0;
-//                    if ((strlen($entity->field_datos_auxiliares['und'][1]['value']) > $l) && (substr($entity->field_datos_auxiliares['und'][1]['value'], $l) != 'sin datos')) {
-//                          $entity_field[0]['value'] .= '<input  class="input-hidden" type="hidden" name="tarifa" value="' . substr($entity->field_datos_auxiliares['und'][1]['value'], $l) . '">';
-//                    }
-//               }
-               if (isset($entity->field_datos_auxiliares2['und'][0]['value']) && is_string($entity->field_datos_auxiliares2['und'][0]['value'])) {
-                    // clave catastral
-                    $l = 17;
-                    if ((strlen($entity->field_datos_auxiliares2['und'][0]['value']) > $l) && (substr($entity->field_datos_auxiliares2['und'][0]['value'], $l) != 'sin datos')) {
-                          $entity_field[0]['value'] .= '<input  class="input-hidden" type="hidden" name="clave_catastral" value="' . substr($entity->field_datos_auxiliares2['und'][0]['value'], $l) . '">';
-                    }
-               }
-               if (isset($entity->field_datos_auxiliares2['und'][1]['value']) && is_string($entity->field_datos_auxiliares2['und'][1]['value'])) {
-                    // descuento por ley de ingresos
-                    $l = 32;
-                    if ((strlen($entity->field_datos_auxiliares2['und'][1]['value']) > $l) && (substr($entity->field_datos_auxiliares2['und'][1]['value'], $l) != 'sin datos')) {
-                          $entity_field[0]['value'] .= '<input  class="input-hidden" type="hidden" name="descuento" value="' . substr($entity->field_datos_auxiliares2['und'][1]['value'], $l) . '">';
-                    }
-               }
-               if (isset($entity->field_datos_auxiliares2['und'][2]['value']) && is_string($entity->field_datos_auxiliares2['und'][2]['value'])) {
-                    // valor catastral
-                    $l = 17;
-                    if ((strlen($entity->field_datos_auxiliares2['und'][2]['value']) > $l) && (substr($entity->field_datos_auxiliares2['und'][2]['value'], $l) != 'sin datos')) {
-                          $entity_field[0]['value'] .= '<input  class="input-hidden" type="hidden" name="valor_catastral" value="' . substr($entity->field_datos_auxiliares2['und'][2]['value'], $l) . '">';
-                    }
-               }
-               if (isset($entity->field_datos_auxiliares2['und'][3]['value']) && is_string($entity->field_datos_auxiliares2['und'][3]['value'])) {
-                    // tasa catastral
-                    $l = 16;
-                    if ((strlen($entity->field_datos_auxiliares2['und'][3]['value']) > $l) && (substr($entity->field_datos_auxiliares2['und'][3]['value'], $l) != 'sin datos')) {
-                          $entity_field[0]['value'] .= '<input  class="input-hidden" type="hidden" name="tasa_catastral" value="' . substr($entity->field_datos_auxiliares2['und'][3]['value'], $l) . '">';
-                    }
-               }
-               if (isset($entity->field_datos_auxiliares2['und'][4]['value']) && is_string($entity->field_datos_auxiliares2['und'][4]['value'])) {
-                    // superficie del terreno
-                    $l = 24;
-                    if ((strlen($entity->field_datos_auxiliares2['und'][4]['value']) > $l) && (substr($entity->field_datos_auxiliares2['und'][4]['value'], $l) != 'sin datos')) {
-                          $entity_field[0]['value'] .= '<input  class="input-hidden" type="hidden" name="superficie_terreno" value="' . substr($entity->field_datos_auxiliares2['und'][4]['value'], $l) . '">';
-                    }
-               }
-               if (isset($entity->field_datos_auxiliares2['und'][5]['value']) && is_string($entity->field_datos_auxiliares2['und'][5]['value'])) {
-                    // superficie de construccion
-                    $l = 29;
-                    if ((strlen($entity->field_datos_auxiliares2['und'][5]['value']) > $l) && (substr($entity->field_datos_auxiliares2['und'][5]['value'], $l) != 'sin datos')) {
-                          $entity_field[0]['value'] .= '<input  class="input-hidden" type="hidden" name="superficie_construccion" value="' . substr($entity->field_datos_auxiliares2['und'][5]['value'], $l) . '">';
-                    }
-               }
-               if (isset($entity->field_datos_auxiliares2['und'][6]['value']) && is_string($entity->field_datos_auxiliares2['und'][6]['value'])) {
-                    // tipo del terreno
-                    $l = 18;
-                    if ((strlen($entity->field_datos_auxiliares2['und'][6]['value']) > $l) && (substr($entity->field_datos_auxiliares2['und'][6]['value'], $l) != 'sin datos')) {
-                          $entity_field[0]['value'] .= '<input  class="input-hidden" type="hidden" name="tipo_terreno" value="' . substr($entity->field_datos_auxiliares2['und'][6]['value'], $l) . '">';
-                    }
-               }
-               if (isset($entity->field_datos_auxiliares2['und'][7]['value']) && is_string($entity->field_datos_auxiliares2['und'][7]['value'])) {
-                    // domicilio notarial
-                    $l = 20;
-                    if ((strlen($entity->field_datos_auxiliares2['und'][7]['value']) > $l) && (substr($entity->field_datos_auxiliares2['und'][7]['value'], $l) != 'sin datos')) {
-                          $entity_field[0]['value'] .= '<input  class="input-hidden" type="hidden" name="domicilio_notarial" value="' . substr($entity->field_datos_auxiliares2['und'][7]['value'], $l) . '">';
-                    }
-               }
-               if (isset($entity->field_datos_auxiliares2['und'][8]['value']) && is_string($entity->field_datos_auxiliares2['und'][8]['value'])) {
-                    // periodo de pago en recibos de predial
-                    $l = 9;
-                    if ((strlen($entity->field_datos_auxiliares2['und'][8]['value']) > $l) && (substr($entity->field_datos_auxiliares2['und'][8]['value'], $l) != 'sin datos')) {
-                          $entity_field[0]['value'] .= '<input  class="input-hidden" type="hidden" name="tarifa" value="' . substr($entity->field_datos_auxiliares2['und'][8]['value'], $l) . '">';
-                    }
-               }
 
                if (isset($entity->field_tabla_de_pagos['und'][0]['value'])) {
                     $table = unserialize($entity->field_tabla_de_pagos['und'][0]['value']);
@@ -220,6 +157,9 @@ if (isset($entity->field_clave_pago) && isset($entity->field_clave_pago['und'][0
 
                $entity_field[0]['value'] .= '<input  class="input-hidden" type="hidden" name="id_de_nodo" value="' . $entity->nid . '">'; 
                $entity_field[0]['value'] .= '<button type="submit">Imprimir</button></form>';
+              $entity_field[0]['value'] .= '<div class="messages warning"><h2 class="element-invisible">Mensaje de advertencia</h2>';
+              $entity_field[0]['value'] .=  '<ul><li>EL PAGO SÓLO SERÁ VÁLIDO SI SE EFECTÚA DENTRO DEL MES DE EXPEDICIÓN DEL RECIBO.</li></ul></div>';
+               $entity_field[0]['value'] .= '<br /><strong><em>DUDAS, ACLARACIONES Y PAGOS EN SECRETARÍA DE FINANZAS MUNICIPAL</em></strong>';
 
                   if ( !$edit_allowed && $edit_disabled && $is_node && !isset($entity->field_pago_referencia_bancaria['und'][0]['value']) ) {
                        // permitir agregar recibo pagado al usuario
@@ -239,9 +179,7 @@ if(!isset($entity->field_total['und'][0]['value']) || (!$entity->field_total['un
               // recibo no se imprime cuando total esta en ceros o cuando no fue verificado por funcionario
               // sustituir variable por un valor para el recibo pagado
               $entity_field[0]['value'] = " <strong><em>El recibo no puede ser generado en este momento. </em></strong><br />";
-              // $entity_field[0]['value'] .= "<strong><em>El recibo estará disponible en breve, el funcionario lo está revisando. Puede consultar más tarde, recibirá un mensaje en su correo cuando esté listo.</em></strong>";
-              $entity_field[0]['value'] .= '<div class="messages warning"><h2 class="element-invisible">Mensaje de advertencia</h2>';
-              $entity_field[0]['value'] .=  '<ul><li>El recibo estará disponible en breve, el funcionario lo está revisando. Puede consultar más tarde, recibirá un mensaje en su correo cuando esté listo.</li></ul></div>';
-              // drupal_set_message(t('El recibo estará disponible en breve, el funcionario lo está revisando. Puede consultar más tarde, recibirá un mensaje en su correo cuando esté listo.'), 'warning', $repeat = 'FALSE');
+              //$entity_field[0]['value'] .= '<div class="messages warning"><h2 class="element-invisible">Mensaje de advertencia</h2>';
+              //$entity_field[0]['value'] .=  '<ul><li>El recibo estará disponible en breve, el funcionario lo está revisando. Puede consultar más tarde, recibirá un mensaje en su correo cuando esté listo.</li></ul></div>';
 }  
 
