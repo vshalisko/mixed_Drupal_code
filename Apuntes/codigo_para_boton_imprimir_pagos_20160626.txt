@@ -180,6 +180,7 @@ if (isset($entity->field_clave_pago) && isset($entity->field_clave_pago['und'][0
 
                $entity_field[0]['value'] .= '<input  class="input-hidden" type="hidden" name="id_de_nodo" value="' . $entity->nid . '">'; 
                $entity_field[0]['value'] .= '<button type="submit">Imprimir</button></form>';
+               $entity_field[0]['value'] .= '<br /><strong><em>DUDAS, ACLARACIONES Y PAGOS EN TESORERÍA MUNICIPAL</em></strong>';
 
                   if ( !$edit_allowed && $edit_disabled && $is_node && !isset($entity->field_pago_referencia_bancaria['und'][0]['value']) ) {
                        // permitir agregar recibo pagado al usuario
@@ -199,9 +200,7 @@ if(!isset($entity->field_total['und'][0]['value']) || (!$entity->field_total['un
               // recibo no se imprime cuando total esta en ceros o cuando no fue verificado por funcionario
               // sustituir variable por un valor para el recibo pagado
               $entity_field[0]['value'] = " <strong><em>El recibo no puede ser generado en este momento. </em></strong><br />";
-              // $entity_field[0]['value'] .= "<strong><em>El recibo estará disponible en breve, el funcionario lo está revisando. Puede consultar más tarde, recibirá un mensaje en su correo cuando esté listo.</em></strong>";
-              $entity_field[0]['value'] .= '<div class="messages warning"><h2 class="element-invisible">Mensaje de advertencia</h2>';
-              $entity_field[0]['value'] .=  '<ul><li>El recibo estará disponible en breve, el funcionario lo está revisando. Puede consultar más tarde, recibirá un mensaje en su correo cuando esté listo.</li></ul></div>';
-              // drupal_set_message(t('El recibo estará disponible en breve, el funcionario lo está revisando. Puede consultar más tarde, recibirá un mensaje en su correo cuando esté listo.'), 'warning', $repeat = 'FALSE');
+              //$entity_field[0]['value'] .= '<div class="messages warning"><h2 class="element-invisible">Mensaje de advertencia</h2>';
+              //$entity_field[0]['value'] .=  '<ul><li>El recibo estará disponible en breve, el funcionario lo está revisando. Puede consultar más tarde, recibirá un mensaje en su correo cuando esté listo.</li></ul></div>';
 }  
 
