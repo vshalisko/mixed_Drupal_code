@@ -1,0 +1,267 @@
+// función para consulta de adeudos en WS y su almacenamiento en la ficha
+$debug = 0;  // variable para debugging, cambia a 0 en producción
+
+// determinar periodo elegido por el usuario a pagar (número de meses al futuro y meses históricos): con los últimos ajustes solo quedaron opciones de mensual y anual
+$periodo = 12; // anual por default
+$var_periodo = 'ANUAL';  // variable para consulta de WS
+if (isset($base_entity->field_periodo_de_pago['und'][0]['tid'])) {
+     $periodo_term = taxonomy_term_load($base_entity->field_periodo_de_pago['und'][0]['tid']);
+//     if ($periodo_term->name == "mensual") { $periodo = 1; $var_periodo = 'MENSUAL'; }   // opcion deshabilitada
+     if ($periodo_term->name == "anual") { $periodo = 12; $var_periodo = 'ANUAL'; }
+//     if ($periodo_term->name == "semestral") { $periodo = 6; }    // opción deshabilitada
+//     if ($periodo_term->name == "bimestral") { $periodo = 2; }     // opción deshabilidata
+}
+
+$contrato = $base_entity->field_clave_pago['und'][0]['value'];
+
+// limpiar cadena de texto del numero de contrato (por seguridad)
+$contrato = preg_replace("/[^0-9URur]/", "", $contrato);
+
+if (isset($contrato)) {
+    // para esta consulta se requiere tener número de cuenta como cadena de texto rellena de ceros
+
+    $var_contrato = $contrato;
+
+    // ==================================
+    // use of ws_nextcode module
+    $xml = new SimpleXMLElement('<Body></Body>');
+    try{
+        // load module for communication
+        drupal_load('module','ws_nextcode');
+        // use of ws_nextcode module
+        $service = new WService();
+        $contrato_obj = new getAdeudoPredial();
+        //Define values of parameters used by webservice
+        $contrato_obj->no_Contrato=$var_contrato;
+        $contrato_obj->periodo_de_pago=$var_periodo;
+        //Send petition to server with object contrato and catch result in $result
+        $result=$service->getAdeudoPredial($contrato_obj);
+
+        $var=get_object_vars($result);
+        $keys = array_keys($var);
+        $soap_result = $var[$keys[0]]->any;  // According to WS structure here go any content
+        //Clean soap response information and create an array with important information
+        $clean_soap_result = str_ireplace('ns2:','',$soap_result);
+        $clean_soap_result = str_ireplace('soap:','',$clean_soap_result);
+        $xml = simplexml_load_string($clean_soap_result);
+
+        if ($debug) {
+            // format XML for output
+            if ($xml->count() > 0) {
+                $domxml = new DOMDocument('1.0');
+                $domxml->preserveWhiteSpace = false;
+                $domxml->formatOutput = true;
+                $domxml->loadXML($xml->asXML());
+                $xml_format = $domxml->saveXML();
+            }
+            $xml_print = "<pre>CONTRATO: $contrato, XML: " . htmlspecialchars(serialize($xml_format)) . "</pre>";
+            drupal_set_message($xml_print, 'warning');
+        }
+    }
+    catch (SoapFault $e){
+        //echo('<div class="messages warning"><h2 class="element-invisible">Mensaje de advertencia</h2>');
+        //echo('<ul>');
+        //echo('<li>Su solicitud no puede ser completada. Sistema está experimentando problemas técnicos al consultar base de datos del municipio. Regrese más tarde.</li>');
+        //echo("<li>Código de error: $e->faultcode</li>");
+        //echo('</ul></div>');
+        drupal_set_message(t('Su solicitud no puede ser completada. Sistema está experimentando problemas técnicos al consultar base de datos del municipio. Regrese más tarde.'), 'warning');
+        drupal_set_message(t("Código de error: $e->faultcode"), 'warning');
+    }
+    // ==================================
+
+    if ($xml->count() > 0) {
+        // consulta regresa algunos datos
+        // tienen que estar ordenados por fecha
+
+        $fecha_inicio_string = '';    // cadena de texto de la fecha de inicio del periodo a pagar
+        $cuota_fija = 0;    // cuota fija se toma de la última fecha en conjunto de registros
+        $tipo_cuota_fija = '';   // tipo de cuota fija  se toma de la última fecha en conjunto de registros
+        $recargos = 0;    // variable para acumular recargos
+        $descuentos = 0;   // variable para acumular descuentos
+        // encabezado de tabla de pagos y contador de lineas
+        $paymenttable = array('cell_0_0' => 'Concepto', 'cell_0_1' => 'Monto');
+        $item_count = 0;    // contador de lineas en tabla de conceptos y montos
+
+        if( isset($xml->Body->GetConsultaAguaResponse->Return->FechaUltimoPago) && $xml->Body->GetConsultaAguaResponse->Return->FechaUltimoPago->__toString() ) {
+            // existe fecha de último pago
+            // por medio de regexp descartamos la hora, solo dejamos fecha
+            preg_match('/^(\d{1,2})\/(\d{1,2})\/(\d{4})\s*/', $xml->Body->GetConsultaAguaResponse->Return->FechaUltimoPago , $matches);
+            if ( $matches[1] && $matches[2] && $matches[3] ) {
+                // parece que tenemos fecha es correcto
+                $date_up_string = $matches[3] . '-' . $matches[2] . '-' . $matches[1] . 'T00:00:00';
+                //drupal_set_message(t("Fecha: $date_up_string"), 'warning');
+                $base_entity->field_pago_fecha_ultimo['und'][0]['value'] = $date_up_string;
+            }
+        }
+        if( isset($xml->Body->GetConsultaAguaResponse->Return->MontoUltimoPagado) && $xml->Body->GetConsultaAguaResponse->Return->MontoUltimoPagado->__toString() ) {
+            // existe registro de ultimo pago
+            $base_entity->field_pago_monto_ultimo['und'][0]['value'] = floatval($xml->Body->GetConsultaAguaResponse->Return->MontoUltimoPagado);
+        }
+
+        if ( isset($xml->Body->GetConsultaAguaResponse->Return->Adeudo->Registro) && ($xml->Body->GetConsultaAguaResponse->Return->Adeudo->Registro->count() > 0)) {
+            // existen registros de adeudo
+            //drupal_set_message(htmlspecialchars(serialize($xml->Body->GetConsultaAguaResponse->Return->Adeudo->asXML())), 'warning');
+ 
+           // agregar filas de tabla
+           foreach ($xml->Body->GetConsultaAguaResponse->Return->Adeudo->Registro as $registro) {
+                //drupal_set_message(htmlspecialchars(serialize($registro->asXML())), 'warning');
+                $item_count++;       
+                $concepto = '';
+                $importe = '';
+
+                if ( $item_count == 1 ) {
+                    // primera línea en tabla
+                    if ( isset($registro->Referencia) && $registro->Referencia->__toString() ) {
+                        // determinar fecha de inicio de registros de adeudo, se requiere cadena de 6 dígitos
+                        $fecha_inicio_string = preg_replace("/[^0-9\/]/", '', $registro->Referencia);
+                        if ( strlen($fecha_inicio_string) >= 6 ) {
+                            $mes = 2 * intval(substr($fecha_inicio_string, 5, 6)) - 1;
+                            $mes = sprintf("%'02d",$mes);
+                            $fecha_inicio_string = substr($fecha_inicio_string, 0, 4) . $mes;
+                        } else {
+                            // cadena de texto no cumple con el formato esperado
+                            $fecha_inicio_string = '';
+                        }
+                    }                    
+                }
+
+                if ( isset($registro->CuotaFija) && $registro->CuotaFija->__toString()) {
+                    $cuota_fija = floatval($registro->CuotaFija);
+                }
+                if ( isset($registro->TipoCuota) && $registro->TipoCuota->__toString()) {
+                    $tipo_cuota_fija = htmlspecialchars($registro->TipoCuota);
+                }
+                if ( isset($registro->ImporteRecargo) && $registro->ImporteRecargo->__toString()) {
+                    $recargos = $recargos + floatval($registro->ImporteRecargo);
+                }
+                if ( isset($registro->ImporteRecargoRegazo) && $registro->ImporteRecargoRegazo->__toString()) {
+                    $recargos = $recargos + floatval($registro->ImporteRecargoRegazo);
+                }
+                // descuentos se tratan como las cantidades a restar del importe
+                if ( isset($registro->Descuento) && $registro->Descuento->__toString()) {
+                    $descuentos = $descuentos + floatval($registro->Descuento);
+                }
+
+                if ( isset($registro->Referencia) && $registro->Referencia->__toString()) {
+                    $concepto = htmlspecialchars($registro->Referencia);
+                }
+                if ( isset($registro->Descripcion) && $registro->Descripcion->__toString()) {
+                    $concepto .= '  '. htmlspecialchars($registro->Descripcion);
+                }
+                if ( isset($registro->Importe) && $registro->Importe->__toString()) {
+                    $importe = floatval($registro->Importe);
+                }
+                $first_column_id = 'cell_' . $item_count . '_0';
+                $second_column_id = 'cell_' . $item_count . '_1';
+                $paymenttable[$first_column_id] = $concepto;
+                $paymenttable[$second_column_id] = $importe;
+                //drupal_set_message($concepto, 'warning');
+                //drupal_set_message(htmlspecialchars($registro->Importe), 'warning');
+            }
+
+         } else {
+             // no existen datos de adeudo
+        }
+
+         if( isset($xml->Body->GetConsultaAguaResponse->Return->Mensaje) && $xml->Body->GetConsultaAguaResponse->Return->Mensaje->__toString() ) {
+            // existe mensaje, se requiere colocarlo al final de la tabla de conceptos
+            $item_count++;
+            $first_column_id = 'cell_' . $item_count . '_0';
+            $second_column_id = 'cell_' . $item_count . '_1';
+            $paymenttable[$first_column_id] = htmlspecialchars($xml->Body->GetConsultaAguaResponse->Return->Mensaje);
+            $paymenttable[$second_column_id] = '';
+         }
+
+        // guardar la tabla de adeudos
+        $table_bottom = array('rebuild' => array(
+                                                                               'count_cols' => '2', 'count_rows' => $item_count + 2, 'rebuild' => 'Rebuild Table',
+                                                                           ),
+                                               'import' => array ( 
+                                                                               'tablefield_csv_field_mytablefield_0' => '', 'rebuild_field_mytablefield_0' => 'Cargar CSV',
+                                                                           ),);
+        $paymenttable = array_merge($paymenttable, $table_bottom);
+        // drupal_set_message("<p>". htmlspecialchars(serialize($paymenttable)) . "</p>", 'warning');
+        $base_entity->field_tabla_de_pagos['und'][0]['value'] = serialize($paymenttable);
+
+//        if ($cuota_fija) { 
+//            $base_entity->field_pago_cuota_fija['und'][0]['value'] = $cuota_fija;
+//        }
+//        if ($tipo_cuota_fija) { 
+//            $base_entity->field_pago_tipo_cuota_fija['und'][0]['value'] = $tipo_cuota_fija;
+//        }
+        $base_entity->field_pagos_recargos['und'][0]['value'] = $recargos;
+        if( $descuentos > 0 ) {
+            $base_entity->field_pago_descuento['und'][0]['value'] = $descuentos;
+        }
+
+
+       // determinar el intervalo a pagar (de fecha de adeudo más antiguo al fin de periodo de pago elegido por el usuario)
+       $fecha_actual = new DateTime(date("Y-m-d"));   
+       $fecha_limite = new DateTime(date("Y-m-d"));    // fecha del límite de periodo elegido
+       $fecha_inicio = new DateTime(date("Y-m-d"));    // fecha de inicio de periodo (adeudo más antiguo)
+       $intervalo_formato = 'P' . $periodo . 'M';
+       $fecha_limite->add(new DateInterval($intervalo_formato));
+       if ( $fecha_inicio_string ) {
+           $fecha_inicio = DateTime::createFromFormat('Ym', $fecha_inicio_string);
+       } else {
+           $fecha_inicio = $fecha_actual;
+       }
+       if ( $periodo == 1 ) {
+           // pago mensual
+           $base_entity->field_pago_periodo_texto['und'][0]['value'] = 'Pago del ' .  $fecha_inicio->format("Y-m") .' al ' . $fecha_limite->format("Y-m");
+       } else {
+           // pago anual
+           $base_entity->field_pago_periodo_texto['und'][0]['value'] = 'Pago del ' .  $fecha_inicio->format("Y-m") .' al ' . $fecha_actual->format("Y") . '-12';
+       }
+
+       // calculo de subtotales y totales
+
+       $subtotal = 0;
+       if (isset($base_entity->field_tabla_de_pagos['und'][0]['value'])) {
+                    $table = unserialize($base_entity->field_tabla_de_pagos['und'][0]['value']);
+                    for ( $i=2; $i <= $table['rebuild']['count_rows']; $i++) {
+                             $j = $i - 1;
+                              $clave_importe = 'cell_'. $j .'_1';
+                              $importe = preg_replace("/[^0-9.]/", "", $table[$clave_importe]);
+                              if (($importe && !is_numeric($importe)) || !$importe) {
+                                  $importe = 0;
+                              }
+                              $subtotal = $subtotal + $importe;
+                    }
+       }
+       $total = $subtotal;
+       if (isset($base_entity->field_pagos_cobranza['und'][0]['value']) && $base_entity->field_pagos_recargos['und'][0]['value']) {
+                    // agregar gastos de cobranza
+                    $total = $total + $base_entity->field_pagos_cobranza['und'][0]['value'];
+       }
+       if (isset($base_entity->field_pago_descuento['und'][0]['value']) && $base_entity->field_pago_descuento['und'][0]['value']) {
+                    // restar descuento
+                    $total = $total - $base_entity->field_pago_descuento['und'][0]['value'];
+       }
+       if (isset($base_entity->field_pagos_recargos['und'][0]['value']) && $base_entity->field_pagos_recargos['und'][0]['value']) {
+                    // agregar recargos
+                    $total = $total + $base_entity->field_pagos_recargos['und'][0]['value'];
+       }
+
+       // next line for debugging
+       // drupal_set_message(t('Subtotal sin datos editados: '. $base_entity->field_subtotal['und'][0]['value'] ), 'warning');
+
+       $base_entity->field_subtotal['und'][0]['value'] = $subtotal;
+
+       // next line for debugging
+       // drupal_set_message(t('Subtotal considerando datos editados: '. $subtotal ), 'warning');
+
+       $base_entity->field_total['und'][0]['value'] = $total;
+
+       if ($total) {
+           // edited flag en caso de que hay cantidades para pagar
+           $base_entity->field_pago_edited_flag['und'][0]['value'] = '1';
+       }
+
+    } else {
+        // la nueva ficha no debe quedar registrada debido a que no existe respuesta con datos (por error de webservice)
+        drupal_set_message(t('Sistema está experimentando problemas técnicos al consultar base de datos del municipio. Reintente más tarde.'), 'warning');
+        return FALSE;
+    }
+}
+return TRUE; 
