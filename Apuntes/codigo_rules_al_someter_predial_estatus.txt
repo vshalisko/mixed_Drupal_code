@@ -1,0 +1,94 @@
+// agregar comentario sobre estatus
+
+// cargar datos del usuario acutal
+$current_user_name = '';
+$current_user_full_name = '';
+$current_user_id = 0;
+global $user;
+if (isset($user->uid)) {
+     $current_user_id = $user->uid;
+     $current_user = user_load($user->uid);
+     // next line for debugging
+     // drupal_set_message(t('Usuario: '. serialize($current_user)), 'warning');
+     if (isset($current_user->name)) {
+             $current_user_name = $current_user->name;
+     } 
+     if (isset($current_user->field_nombre_completo_usuario['und'][0]['value'])) {
+             $current_user_full_name = $current_user->field_nombre_completo_usuario['und'][0]['value'];
+     } else {
+             $current_user_full_name = $current_user_name;
+     }
+}
+
+$comment = (object) array(
+    'nid' => $base_entity->nid,
+    'cid' => 0,
+    'pid' => 0,
+    'uid' => $current_user_id,
+    'mail' => '',
+    'is_anonymous' => 0,
+    'homepage' => '',
+    'created' => time(),
+    'status' => COMMENT_PUBLISHED,
+    'subject' => 'Inicio del tramite',
+    'language' => LANGUAGE_NONE,
+  );
+
+$comment->comment_body[$comment->language][0]['value'] = 'Trámite fue sometido por ' . $current_user_full_name  
+                                                                                                     . ', fecha de actualización ' . format_date(time(), 'custom', 'l j F Y  H:i');
+$comment->comment_body[$comment->language][0]['format'] = 'plain_text'; 
+
+$comment->field_pago_estatus[$comment->language][0]['tid'] = '253';
+
+comment_submit($comment);
+comment_save($comment);
+
+// para determinar que cuenta no existe se checa presencia de datos en campo contribuyente, para cuentas no existientes se agrega estatus con estatus de cancelado
+if (  !$base_entity->field_pagos_contribuyente['und'][0]['value'] ) {
+    $comment1 = (object) array(
+    'nid' => $base_entity->nid,
+    'cid' => 0,
+    'pid' => 0,
+    'uid' => 1,   // UID 1 pertenece al administrador del sitio
+    'mail' => '',
+    'is_anonymous' => 0,
+    'homepage' => '',
+    'created' => time(),
+    'status' => COMMENT_PUBLISHED,
+    'subject' => 'Cierre del tramite',
+    'language' => LANGUAGE_NONE,
+    );
+
+    $comment1->comment_body[$comment->language][0]['value'] = 'Trámite cancelado por Administrador del sitio, fecha de actualización ' . format_date(time(), 'custom', 'l j F Y  H:i');
+    $comment1->comment_body[$comment->language][0]['format'] = 'plain_text'; 
+
+    $comment1->field_pago_estatus[$comment->language][0]['tid'] = '3002';
+
+    comment_submit($comment1);
+    comment_save($comment1);
+}
+
+// para determinar que el tramite depe cambiar estatus a A pagar se checa presencia de total y "edited_flag"
+if (  $base_entity->field_pagos_contribuyente['und'][0]['value'] && $base_entity->field_total['und'][0]['value'] && $base_entity->field_pago_edited_flag['und'][0]['value'] ) {
+    $comment2 = (object) array(
+    'nid' => $base_entity->nid,
+    'cid' => 0,
+    'pid' => 0,
+    'uid' => 1,   // UID 1 pertenece al administrador del sitio
+    'mail' => '',
+    'is_anonymous' => 0,
+    'homepage' => '',
+    'created' => time(),
+    'status' => COMMENT_PUBLISHED,
+    'subject' => 'Actualización',
+    'language' => LANGUAGE_NONE,
+    );
+
+    $comment2->comment_body[$comment->language][0]['value'] = 'Confirmado por Administrador del sitio, fecha de actualización ' . format_date(time(), 'custom', 'l j F Y  H:i');
+    $comment2->comment_body[$comment->language][0]['format'] = 'plain_text'; 
+
+    $comment2->field_pago_estatus[$comment->language][0]['tid'] = '52';
+
+    comment_submit($comment2);
+    comment_save($comment2);
+}
