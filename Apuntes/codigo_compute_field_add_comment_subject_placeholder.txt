@@ -1,0 +1,2 @@
+$entity_field[0]['value'] = "";
+$entity_field[0]['value'] = '<script>document.getElementById("edit-subject").placeholder = "Escribe aquí el asunto, e.g. Actualización, Cierre de trámite"; document.getElementById("edit-subject").defaultValue = "Actualización";</script>';
