@@ -10,16 +10,44 @@ if ( isset($comment->field_rlm_estatus_dictamen['und'][0]['tid']) ) {
     $parent_node_id = $comment->nid;
     if ( $status_value == 'Aprobado' ) {
         $ws_sent_flag = 1;
+
         $parent_node = node_load($comment->nid);
         if ( isset($parent_node->field_ln_razon_social['und'][0]['value']) ) {
             $xml->RazonSocal = $parent_node->field_ln_razon_social['und'][0]['value'];
         }
+        if ( isset($parent_node->field_ln_giro['und'][0]['tid']) ) {
+            $giro = taxonomy_term_load($parent_node->field_ln_giro['und'][0]['tid']);
+            $xml->Giro = $giro->name;
+        }
+        if ( isset($parent_node->field_ln_rfc['und'][0]['value']) ) {
+            $xml->Rfc = $parent_node->field_ln_rfc['und'][0]['value'];
+        }
+        if ( isset($parent_node->field_ln_colonia_ws['und'][0]['tid']) ) {
+            $colonia = taxonomy_term_load($parent_node->field_ln_colonia_ws['und'][0]['tid']);
+            $xml->Colonia = $colonia->name;
+        }
+        if ( isset($parent_node->field_ln_localidad_ws['und'][0]['tid']) ) {
+            $localidad = taxonomy_term_load($parent_node->field_ln_localidad_ws['und'][0]['tid']);
+            $xml->Localidad = $localidad->name;
+        }
+        if ( isset($parent_node->field_ln_calle_ws['und'][0]['tid']) ) {
+            $calle = taxonomy_term_load($parent_node->field_ln_calle_ws['und'][0]['tid']);
+            $xml->Domicilio =  $calle->name;
+            // si existe calle, se puede enviar numero exterior e interior
+            if ( $calle->name && isset($parent_node->field_ln_numero_exterior['und'][0]['value']) && $parent_node->field_ln_numero_exterior['und'][0]['value'] ) {
+                $xml->Exterior = $parent_node->field_ln_numero_exterior['und'][0]['value'];
+            }
+            if ( $calle->name && isset($parent_node->field_ln_numero_interior['und'][0]['value']) && $parent_node->field_ln_numero_interior['und'][0]['value'] ) {
+                $xml->Interior = $parent_node->field_ln_numero_interior['und'][0]['value'];
+            }
+        }
+
         $parent_node->comment = 1;     // cerrar comentarios despues de recibir este estatus
         node_save($parent_node);
     }
 
+    $test_print = '';
     if ($debug) {
-            $test_print = '';
             if ( $ws_sent_flag ) {
                 $test_print .= 'ENVIAR DATOS A WS';
             }
