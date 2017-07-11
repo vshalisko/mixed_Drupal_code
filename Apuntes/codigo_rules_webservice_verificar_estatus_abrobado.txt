@@ -1,0 +1,45 @@
+// función para verificar contenido del último estatus
+$debug = 1;  // variable para debugging, cambia a 0 en producción
+$ws_sent_flag = 0;  // indicador de envio al WS, se requiere preparar el paquete de datos y enviar a WS cuando este variable es 1
+
+if ( isset($comment->field_rlm_estatus_dictamen['und'][0]['tid']) ) {
+    // existe estatus asignada
+    $xml = new SimpleXMLElement('<Body></Body>');
+    $status = taxonomy_term_load($comment->field_rlm_estatus_dictamen['und'][0]['tid']);
+    $status_value = $status->name;
+    $parent_node_id = $comment->nid;
+    if ( $status_value == 'Aprobado' ) {
+        $ws_sent_flag = 1;
+        $parent_node = node_load($comment->nid);
+        if ( isset($parent_node->field_ln_razon_social['und'][0]['value']) ) {
+            $xml->RazonSocal = $parent_node->field_ln_razon_social['und'][0]['value'];
+        }
+        $parent_node->comment = 1;     // cerrar comentarios despues de recibir este estatus
+        node_save($parent_node);
+    }
+
+    if ($debug) {
+            $test_print = '';
+            if ( $ws_sent_flag ) {
+                $test_print .= 'ENVIAR DATOS A WS';
+            }
+            // $test_print .= "<pre>" . htmlspecialchars(serialize($parent_node)) . "</pre>";   // visualizar objeto completo de nodo en forma de estructura
+            $test_print .= "<pre>Estatus: $status_value, Nodo principal: $parent_node_id</pre>";
+            drupal_set_message($test_print, 'warning');
+            if ($xml->count() > 0) {
+                $domxml = new DOMDocument('1.0');
+                $domxml->preserveWhiteSpace = false;
+                $domxml->formatOutput = true;
+                $domxml->loadXML($xml->asXML());
+                $xml_format = $domxml->saveXML();
+            }
+            $xml_print = "<pre>XML: " . htmlspecialchars(serialize($xml_format)) . "</pre>";
+            drupal_set_message($xml_print, 'warning');
+    }
+}
+
+// $entity_field[0]['value'] .= " Numero de comentarios " . $entity->comment_count;
+// $entity_field[0]['value'] .= " Ultimo comentario CID " . $entity->cid;
+// $comment1 = comment_load($entity->cid);
+
+return TRUE; 
