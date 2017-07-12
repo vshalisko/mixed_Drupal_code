@@ -28,6 +28,7 @@ if (!empty($result['node'])) {
               // existe estatus
               $tid = $last_comment->field_pago_estatus['und'][0]['tid'];
               if ( ($tid == 52) || ($tid == 101) || ($tid == 253) ) {
+                 // vencer tramites de pago en caso que tengas estatus "A pagar", "En proceso", "Sometido"
                  $vencer_flag = 1;
               }
           }
