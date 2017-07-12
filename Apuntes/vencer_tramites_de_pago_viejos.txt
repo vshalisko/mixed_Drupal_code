@@ -1,0 +1,67 @@
+// revisar todos tramites de pago y agregar commentario vencido en casos aplicables
+
+$query = new EntityFieldQuery();
+
+$query->entityCondition('entity_type', 'node')
+  ->entityCondition('bundle', 'tramites_pago')
+  ->propertyCondition('status', 1);
+
+$result = $query->execute();
+
+$actual_year_month = new DateTime(date("Y-m"));
+
+if (!empty($result['node'])) {
+  $nids = array_keys($result['node']);
+
+ foreach ($nids as $nid) {
+    $node = node_load($nid, NULL, TRUE);
+    // do something awesome
+    $node_year_month = new DateTime();
+    $node_year_month->setTimestamp($node->created);
+    if ( !($actual_year_month->format("Y-m") == $node_year_month->format("Y-m")) ) {
+      // nodo del mes que no es el mes actual
+      $vencer_flag = 0;
+      if ( isset($node->cid) ) {
+          // existen comentarios (estatus), cargar el último
+          $last_comment = comment_load($node->cid);
+          if ( isset( $last_comment->field_pago_estatus['und'][0]['tid'] ) ) {
+              // existe estatus
+              $tid = $last_comment->field_pago_estatus['und'][0]['tid'];
+              if ( ($tid == 52) || ($tid == 101) || ($tid == 253) ) {
+                 $vencer_flag = 1;
+              }
+          }
+      }
+
+     // para fichas de los meses disttintos del actual se asigna el comentario sobre estatus vencido
+        if (  $vencer_flag ) {
+        // if (  $vencer_flag && $node->field_pagos_contribuyente['und'][0]['value'] ) {     // opcionalmente verificar que es tramite valido (con campo contribuyente presente)
+            $comment1 = (object) array(
+            'nid' => $node->nid,
+            'cid' => 0,
+            'pid' => 0,
+            'uid' => 1,   // UID 1 pertenece al administrador del sitio
+            'mail' => '',
+            'is_anonymous' => 0,
+            'homepage' => '',
+            'created' => time(),
+            'status' => COMMENT_PUBLISHED,
+            'subject' => 'Cierre del trámite',
+            'language' => LANGUAGE_NONE,
+            );
+
+            $comment1->comment_body[$comment1->language][0]['value'] = 'Trámite fue catalogado como VENCIDO por Administrador del sitio, fecha de actualización ' . format_date(time(), 'custom', 'l j F Y  H:i');
+            $comment1->comment_body[$comment1->language][0]['format'] = 'plain_text'; 
+
+            $comment1->field_pago_estatus[$comment1->language][0]['tid'] = '3003';
+
+           comment_submit($comment1);
+           comment_save($comment1);
+        }
+
+
+    }
+  }
+}
+
+return TRUE;
