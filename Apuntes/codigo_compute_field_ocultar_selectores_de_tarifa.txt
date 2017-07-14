@@ -1,0 +1,17 @@
+$entity_field[0]['value'] = "";
+$entity_field[0]['value'] .= '<script>document.getElementById("edit-subject").placeholder = "Escribe aquí el asunto, e.g. Actualización, Cierre de trámite"; document.getElementById("edit-subject").defaultValue = "Actualización"; document.getElementById("edit-comment-body-und-0-value").placeholder = "Escribe aquí el contenido de dictamen";</script>';
+if ( isset($entity->field_nca_giro['und'][0]['tid']) ) {
+    $giro = taxonomy_term_load($entity->field_nca_giro['und'][0]['tid']);
+    if ( $giro->name == 'Comercial' ) {
+        $entity_field[0]['value'] .= '<script>document.getElementById("edit-field-tarifa-dom").style.visibility = "hidden"; document.getElementById("edit-field-tarifa-dom-und").disabled = true;</script>'; 
+// document.getElementById("edit-field-tarifa-dom-und").style.visibility = "hidden"; 
+        $entity_field[0]['value'] .= '<script>document.getElementById("edit-field-tarifa-com").style.visibility = "visible"; document.getElementById("edit-field-tarifa-com-und").disabled = false</script>';
+// document.getElementById("edit-field-tarifa-com-und").style.visibility = "visivle"; 
+    } else {
+        $entity_field[0]['value'] .= '<script>document.getElementById("edit-field-tarifa-dom").style.visibility = "visible"; document.getElementById("edit-field-tarifa-dom-und").disabled = false;</script>'; 
+// document.getElementById("edit-field-tarifa-dom-und").style.visibility = "visible"; 
+        $entity_field[0]['value'] .= '<script>document.getElementById("edit-field-tarifa-com").style.visibility = "hidden"; document.getElementById("edit-field-tarifa-com-und").disabled = true</script>';
+// document.getElementById("edit-field-tarifa-com-und").style.visibility = "hidden"; 
+    }
+}
+
