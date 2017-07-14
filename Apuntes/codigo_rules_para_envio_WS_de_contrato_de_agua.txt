@@ -140,10 +140,12 @@ if ( isset($comment->field_rlm_estatus_dictamen['und'][0]['tid']) ) {
 		       // AQUÍ HAY QUE AGREGAR TRATAMIENTO DE RESULTADOS, SI SE GRABO O NO Y GUARDAR EL NUMERO DE LICENCIA GENERADA EN VARIABLE
                        if( isset($xml_result->Body->GetConsultaAguaResponse->Return->Operacion) && $xml_result->Body->GetConsultaAguaResponse->Return->Operacion->__toString() ) {
                            if (  $xml_result->Body->GetConsultaAguaResponse->Return->Operacion == "True" ) {
-                              // licencia fue grabada en WS
+                              // contrato fue grabado en WS
+                              $numero_asignado = '';
                               if ( isset($xml_result->Body->GetConsultaAguaResponse->Return->Contrato) && $xml_result->Body->GetConsultaAguaResponse->Return->Contrato->__toString() ) {
                                    // existe un numero de contrato a guardar
                                    $parent_node->field_nca_numero_asignado['und'][0]['value'] = htmlspecialchars($xml_result->Body->GetConsultaAguaResponse->Return->Contrato);
+                                   $numero_asignado = htmlspecialchars($xml_result->Body->GetConsultaAguaResponse->Return->Contrato);
                               }
                               // agregar comentario de estatus
                                    $comment1 = (object) array(
@@ -159,11 +161,11 @@ if ( isset($comment->field_rlm_estatus_dictamen['und'][0]['tid']) ) {
                                    'subject' => 'Registro del tramite en base de datos del municipio',
                                    'language' => LANGUAGE_NONE,
                                    );
-
-                                  $comment1->comment_body[$comment1->language][0]['value'] = 'Trámite se catalogo como por Administrador del sitio, fecha de actualización ' . format_date(time(), 'custom', 'l j F Y  H:i');
+                                  $comment1->comment_body[$comment1->language][0]['value'] = "Número de contrato asignado: " .  $numero_asignado . ". ";
+                                  $comment1->comment_body[$comment1->language][0]['value'] .= 'Trámite fue catalogado como concluido por Administrador del sitio, fecha de actualización ' . format_date(time(), 'custom', 'l j F Y  H:i');
                                   $comment1->comment_body[$comment1->language][0]['format'] = 'plain_text'; 
 
-                                  $comment1->field_rlm_estatus_dictamen[$comment->language][0]['tid'] = '3265';
+                                  $comment1->field_rlm_estatus_dictamen[$comment1->language][0]['tid'] = '3265';
 
                                   comment_submit($comment1);
                                   comment_save($comment1);
