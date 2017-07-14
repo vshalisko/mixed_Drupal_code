@@ -1,0 +1,202 @@
+// función para verificar contenido del último estatus
+$debug_dont_sent = 0;  // variable para debugging, cambia a 0 en producción
+$debug = 0;
+$ws_sent_flag = 0;  // indicador de envio al WS, se requiere preparar el paquete de datos y enviar a WS cuando este variable es 1
+
+if ( isset($comment->field_rlm_estatus_dictamen['und'][0]['tid']) ) {
+    // existe estatus asignada
+    $xml = new SimpleXMLElement('<Body></Body>');
+    $status = taxonomy_term_load($comment->field_rlm_estatus_dictamen['und'][0]['tid']);
+    $status_value = $status->name;
+    $parent_node_id = $comment->nid;
+    if ( $status_value == 'Aprobado' ) {
+        $ws_sent_flag = 1;
+
+        $parent_node = node_load($comment->nid);
+
+        $contribuyente_text = '';
+        if ( isset($parent_node->field_nca_nombre_propietario['und'][0]['value']) ) {
+            $contribuyente_text .= $parent_node->field_nca_nombre_propietario['und'][0]['value'];
+        }
+        if ( $contribuyente_text ) {
+            $xml->Contribuyente = trim($contribuyente_text);
+        } else {
+           $xml->Contribuyente = '';
+        }
+
+        if ( isset($parent_node->field_calle_nca_nt_ws['und'][0]['tid']) ) {
+            $calle = taxonomy_term_load($parent_node->field_calle_nca_nt_ws['und'][0]['tid']);
+            $xml->calle =  $calle->name;
+            // si existe calle, se puede enviar numero exterior e interior
+            if ( $calle->name && isset($parent_node->field_nca_numero_exterior['und'][0]['value']) && $parent_node->field_nca_numero_exterior['und'][0]['value'] ) {
+                $xml->numext = $parent_node->field_nca_numero_exterior['und'][0]['value'];
+            }
+            if ( $calle->name && isset($parent_node->field_nca_numero_interior['und'][0]['value']) && $parent_node->field_nca_numero_interior['und'][0]['value'] ) {
+                $xml->numint = $parent_node->field_nca_numero_interior['und'][0]['value'];
+            }
+        } else {
+           $xml->calle = '';
+           $xml->numext = '';
+           $xml->numint = '';
+        }
+
+        if ( isset($parent_node->field_nca_colonia_nt_ws['und'][0]['tid']) ) {
+            $colonia = taxonomy_term_load($parent_node->field_nca_colonia_nt_ws['und'][0]['tid']);
+            $xml->colonia = $colonia->name;
+        } else {
+           $xml->colonia = '';
+        }
+
+        if ( isset($parent_node->field_nca_localidad_nt_ws['und'][0]['tid']) ) {
+            $localidad = taxonomy_term_load($parent_node->field_nca_localidad_nt_ws['und'][0]['tid']);
+            $xml->localidad = $localidad->name;
+        } else {
+           $xml->localidad = '';
+        }
+
+        if ( isset($parent_node->field_ecallent1['und'][0]['tid']) ) {
+            $calle1 = taxonomy_term_load($parent_node->field_ecallent1['und'][0]['tid']);
+            $xml->entre1 = $calle1->name;
+        } else {
+           $xml->entre1 = '';
+        }
+
+        if ( isset($parent_node->field_ecallent2['und'][0]['tid']) ) {
+            $calle2 = taxonomy_term_load($parent_node->field_ecallent2['und'][0]['tid']);
+            $xml->entre2 = $calle2->name;
+        } else {
+           $xml->entre2 = '';
+        }
+
+        if ( isset($comment->created) ) {
+            $fecha_alta = new DateTime();
+            $fecha_alta->setTimestamp($comment->created);
+            $xml->fechaAlta = $fecha_alta->format("Y-m-d");
+        }
+
+        if ( isset($parent_node->field_nca_tipo_tarifa['und'][0]['tid']) ) {
+            $tipotarifa = taxonomy_term_load($parent_node->field_nca_tipo_tarifa['und'][0]['tid']);
+            $xml->tipotarifa = $tipotarifa->name;
+        } else {
+           $xml->tipotarifa = '';
+        }
+    }
+
+    if ($ws_sent_flag) {
+        
+        if ( !$debug_dont_sent ) {
+
+		// envio de datos a WS
+		// ==================================
+		// use of ws_nextcode module
+		$xml_result = new SimpleXMLElement('<Body></Body>');
+		try {
+		    //Create WService & function
+		    $service = new WService();
+		    $contrato= new setNuevoContrato();
+		    //Define values of parameters used by webservice
+                    $contrato->Contribuyente=utf8_encode($xml->Contribuyente);
+                    $contrato->calle=utf8_encode($xml->calle);
+                    $contrato->numext=utf8_encode($xml->numext);
+                    $contrato->numint=utf8_encode($xml->numint);
+                    $contrato->colonia=utf8_encode($xml->colonia);
+                    $contrato->localidad=utf8_encode($xml->localidad);
+                    $contrato->entre1=utf8_encode($xml->entre1);
+                    $contrato->entre2=utf8_encode($xml->entre2);
+                    $contrato->fechaAlta=utf8_encode($xml->fechaAlta);
+                    $contrato->tipotarifa=utf8_encode($xml->tipotarifa);    
+                    if ($debug) { drupal_set_message('<pre>'. print_r($contrato, true) .'</pre>', 'warning'); }
+                
+		    //Send petition to server with object and catch result in $result
+		    $result=$service->setNuevoContrato($contrato);
+		    $var=get_object_vars($result);
+		    $keys = array_keys($var);
+		    $soap_result = $var[$keys[0]]->any; //According to WS structure, here go "any" content
+		    //Clean soap response information and create an array with important information
+		    $clean_soap_result = str_ireplace('ns2:','',$soap_result);
+		    $clean_soap_result = str_ireplace('soap:','',$clean_soap_result);
+		    //var_dump($clean_soap_result);
+		    $xml_result = simplexml_load_string($clean_soap_result);
+		    if ($debug) {
+			       // format XML for output
+			       if ($xml_result->count() > 0) {
+				   $domxml = new DOMDocument('1.0');
+				   $domxml->preserveWhiteSpace = false;
+				   $domxml->formatOutput = true;
+				   $domxml->loadXML($xml_result->asXML());
+				   $xml_result_format = $domxml->saveXML();
+			       }
+			       $xml_result_print = "<pre>XML: " . htmlspecialchars(serialize($xml_result_format)) . "</pre>";
+			       drupal_set_message($xml_result_print, 'warning');
+		    }  
+		} catch (SoapFault $e) {
+			drupal_set_message(t('Su solicitud no puede ser completada. Sistema está experimentando problemas técnicos al consultar base de datos del municipio. Regrese más tarde.'), 'warning');
+			drupal_set_message(t("Código de error: $e->faultcode"), 'warning');
+		}
+		// ==================================
+		if ($xml_result->count() > 0) {
+		       // consulta regresa algunos datos
+		       // =================================================
+		       // AQUÍ HAY QUE AGREGAR TRATAMIENTO DE RESULTADOS, SI SE GRABO O NO Y GUARDAR EL NUMERO DE LICENCIA GENERADA EN VARIABLE
+                       if( isset($xml_result->Body->GetConsultaAguaResponse->Return->Operacion) && $xml_result->Body->GetConsultaAguaResponse->Return->Operacion->__toString() ) {
+                           if (  $xml_result->Body->GetConsultaAguaResponse->Return->Operacion == "True" ) {
+                              // licencia fue grabada en WS
+                              if ( isset($xml_result->Body->GetConsultaAguaResponse->Return->Contrato) && $xml_result->Body->GetConsultaAguaResponse->Return->Contrato->__toString() ) {
+                                   // existe un numero de contrato a guardar
+                                   $parent_node->field_nca_numero_asignado['und'][0]['value'] = htmlspecialchars($xml_result->Body->GetConsultaAguaResponse->Return->Contrato);
+                              }
+                              // agregar comentario de estatus
+                                   $comment1 = (object) array(
+                                   'nid' => $parent_node->nid,
+                                   'cid' => 0,
+                                   'pid' => 0,
+                                   'uid' => 1,   // UID 1 pertenece al administrador del sitio
+                                   'mail' => '',
+                                   'is_anonymous' => 0,
+                                   'homepage' => '',
+                                   'created' => time(),
+                                   'status' => COMMENT_PUBLISHED,
+                                   'subject' => 'Registro del tramite en base de datos del municipio',
+                                   'language' => LANGUAGE_NONE,
+                                   );
+
+                                  $comment1->comment_body[$comment1->language][0]['value'] = 'Trámite se catalogo como por Administrador del sitio, fecha de actualización ' . format_date(time(), 'custom', 'l j F Y  H:i');
+                                  $comment1->comment_body[$comment1->language][0]['format'] = 'plain_text'; 
+
+                                  $comment1->field_rlm_estatus_dictamen[$comment->language][0]['tid'] = '3265';
+
+                                  comment_submit($comment1);
+                                  comment_save($comment1);
+
+                              $parent_node->comment = 1;     // cerrar comentarios despues de envío exitoso de datos 
+                              node_save($parent_node);
+                              // AQUÍ OPCIONALMENTE SE PUEDE AGREGAR MENSAJE DE ESTATUS CON EL NÚMERO DE CONTRATO ASIGNADO 
+                           }
+                       } else {
+                           // Respuesta de WS es distinta de TRUE => datos no fueron guardados
+                            // AQUI AGREGAR EL AVISO QUE DATOS NO FUERON GUARDADOS
+                       }
+		}
+
+        }
+
+        if ( $debug ) {
+           $test_print = '';
+           $test_print .= 'ENVIAR DATOS A WS';
+            // $test_print .= "<pre>" . htmlspecialchars(serialize($parent_node)) . "</pre>";   // visualizar objeto completo de nodo en forma de estructura
+            // $test_print .= "<pre>Estatus: $status_value, Nodo principal: $parent_node_id</pre>";
+            drupal_set_message($test_print, 'warning');
+            if ($xml->count() > 0) {
+                $domxml = new DOMDocument('1.0');
+                $domxml->preserveWhiteSpace = false;
+                $domxml->formatOutput = true;
+                $domxml->loadXML($xml->asXML());
+                $xml_format = $domxml->saveXML();
+                $xml_print = "<pre>XML: " . htmlspecialchars(serialize($xml_format)) . "</pre>";
+                drupal_set_message($xml_print, 'warning');
+            }
+        }
+    }
+}
+
+return TRUE; 
