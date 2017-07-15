@@ -1,6 +1,6 @@
 // función para verificar contenido del último estatus
-$debug_dont_sent = 0;  // variable para debugging, cambia a 0 en producción
-$debug = 0;
+$debug_dont_sent = 0;  // variable para debugging, cambia a 0 en producción para que datos se envian a WS
+$debug = 0;    // variable para debugging, cambia a 0 en producción para ver mensajes con información técnica
 $ws_sent_flag = 0;  // indicador de envio al WS, se requiere preparar el paquete de datos y enviar a WS cuando este variable es 1
 
 if ( isset($comment->field_rlm_estatus_dictamen['und'][0]['tid']) ) {
@@ -74,11 +74,26 @@ if ( isset($comment->field_rlm_estatus_dictamen['und'][0]['tid']) ) {
             $xml->fechaAlta = $fecha_alta->format("Y-m-d");
         }
 
-        if ( isset($parent_node->field_nca_tipo_tarifa['und'][0]['tid']) ) {
-            $tipotarifa = taxonomy_term_load($parent_node->field_nca_tipo_tarifa['und'][0]['tid']);
-            $xml->tipotarifa = $tipotarifa->name;
+        if ( isset($parent_node->field_tipo_de_tarifa_texto['und'][0]['value']) ) {
+             // en caso que tipo de tarifa se encuentra en campo de texto tomarlo como valor inicial, en caso contrario escribir cadena vacia
+            $xml->tipotarifa = $parent_node->field_tipo_de_tarifa_texto['und'][0]['value'];
         } else {
            $xml->tipotarifa = '';
+        }
+
+        if ( isset($comment->field_tarifa_com['und'][0]['tid']) ) {
+            // reemplazar el tipo de tarifa por COM definido en comentario y reescribir campo de texto
+            $tipotarifa = taxonomy_term_load($comment->field_tarifa_com['und'][0]['tid']);
+            $xml->tipotarifa = $tipotarifa->name;
+            $parent_node->field_tipo_de_tarifa_texto['und'][0]['value'] = $tipotarifa->name;
+            node_save($parent_node);
+        }
+        if ( isset($comment->field_tarifa_dom['und'][0]['tid']) ) {
+            // reemplazar el tipo de tarifa por DOM definido en comentario y reescribir campo de taxto
+            $tipotarifa = taxonomy_term_load($comment->field_tarifa_dom['und'][0]['tid']);
+            $xml->tipotarifa = $tipotarifa->name;
+            $parent_node->field_tipo_de_tarifa_texto['und'][0]['value'] = $tipotarifa->name;
+            node_save($parent_node);
         }
     }
 
